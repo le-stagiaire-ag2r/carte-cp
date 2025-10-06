@@ -359,16 +359,23 @@
                                 
                                 if (matchingItems.length > 0) {
                                     matchingItems.forEach(function(item) {
-                                        var featureCopy = JSON.parse(JSON.stringify(feature));
-                                        featureCopy.properties.codePostal = item.cp;
-                                        featureCopy.properties.matchedCommune = item.commune;
+                                        // Simplification AVANT la copie pour économiser de la mémoire
+                                        var maxPoints = (dept === "02") ? 5 : 15;  // Encore plus agressif
                                         
-                                        // Pour l'Aisne (02), simplification ULTRA agressive (max 10 points)
-                                        // Pour les autres départements, simplification normale (max 20 points)
-                                        var maxPoints = (dept === "02") ? 10 : 20;
-                                        if (featureCopy.geometry && featureCopy.geometry.coordinates) {
-                                            featureCopy.geometry.coordinates = simplifyGeometry(featureCopy.geometry.coordinates, 0.001, maxPoints);
+                                        // Simplifier avant de copier
+                                        if (feature.geometry && feature.geometry.coordinates) {
+                                            feature.geometry.coordinates = simplifyGeometry(feature.geometry.coordinates, 0.001, maxPoints);
                                         }
+                                        
+                                        var featureCopy = {
+                                            type: feature.type,
+                                            geometry: feature.geometry,
+                                            properties: {
+                                                codePostal: item.cp,
+                                                matchedCommune: item.commune,
+                                                nom: feature.properties.nom
+                                            }
+                                        };
                                         
                                         allFeatures.push(featureCopy);
                                     });
@@ -384,6 +391,9 @@
                 var percent = Math.round((loaded / total) * 100);
                 document.getElementById("progressFill").style.width = percent + "%";
                 document.getElementById("progressFill").textContent = percent + "%";
+                
+                // Pause pour laisser le navigateur respirer
+                await new Promise(resolve => setTimeout(resolve, 50));
             }
 
             geoDataCache = allFeatures;
@@ -426,7 +436,7 @@
         function simplifyGeometry(coords, tolerance, maxPoints) {
             if (!coords || coords.length === 0) return coords;
             
-            maxPoints = maxPoints || 20; // Par défaut 20 points
+            maxPoints = maxPoints || 15; // Par défaut 15 points (réduit de 20)
             
             // Si c'est un point [lon, lat]
             if (typeof coords[0] === 'number') {
@@ -438,17 +448,15 @@
                 // Ne garder qu'un point sur X pour réduire drastiquement la mémoire
                 if (coords.length <= maxPoints) return coords;
                 
-                var simplified = [];
-                var step = Math.max(1, Math.floor(coords.length / maxPoints));
+                var simplified = [coords[0]]; // Toujours garder le premier point
+                var step = Math.max(2, Math.floor(coords.length / maxPoints)); // Minimum step de 2
                 
-                for (var i = 0; i < coords.length; i += step) {
+                for (var i = step; i < coords.length - 1; i += step) {
                     simplified.push(coords[i]);
                 }
                 
-                // S'assurer que le polygone est fermé
-                if (simplified.length > 0 && simplified[simplified.length - 1] !== coords[coords.length - 1]) {
-                    simplified.push(coords[coords.length - 1]);
-                }
+                // Toujours garder le dernier point pour fermer le polygone
+                simplified.push(coords[coords.length - 1]);
                 
                 return simplified;
             }
