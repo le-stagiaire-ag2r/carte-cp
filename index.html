@@ -107,7 +107,8 @@
             <h2 style="margin-bottom: 16px;">Carte choroplèthe interactive</h2>
             <div class="info-box">
                 <strong>🗺️ Carte optimisée :</strong> Les communes sont colorées selon leur code postal. 
-                Cliquez sur une commune pour l'attribuer à une zone.
+                Cliquez sur une commune pour l'attribuer à une zone.<br>
+                <small style="color: #dc2626;">⚠️ Note : L'Aisne (02) n'est pas affichée sur la carte pour éviter les problèmes de performance, mais tous les codes postaux de l'Aisne restent disponibles dans la liste.</small>
             </div>
             
             <div id="loadingSection" class="hidden">
@@ -336,14 +337,17 @@
             document.getElementById("successSection").classList.add("hidden");
             document.getElementById("toggleViewBtn").disabled = true;
 
-            var depts = Object.keys(departments);
+            // Exclure l'Aisne (02) de la carte pour éviter les crashs
+            var depts = Object.keys(departments).filter(d => d !== "02");
             var total = depts.length;
             var loaded = 0;
             var allFeatures = [];
+            
+            document.getElementById("loadingText").textContent = "Note : L'Aisne (02) n'est pas affichée sur la carte pour des raisons de performance, mais reste disponible dans la liste des codes postaux.";
 
             for (var i = 0; i < depts.length; i++) {
                 var dept = depts[i];
-                document.getElementById("loadingText").textContent = "Chargement du département " + dept + "...";
+                document.getElementById("loadingText").textContent = "Chargement du département " + dept + " (" + departments[dept] + ")...";
                 
                 try {
                     var response = await fetch("https://geo.api.gouv.fr/departements/" + dept + "/communes?fields=nom,code,codesPostaux&format=geojson&geometry=contour");
@@ -359,10 +363,9 @@
                                 
                                 if (matchingItems.length > 0) {
                                     matchingItems.forEach(function(item) {
-                                        // Simplification AVANT la copie pour économiser de la mémoire
-                                        var maxPoints = (dept === "02") ? 5 : 15;  // Encore plus agressif
+                                        // Simplification modérée
+                                        var maxPoints = 15;
                                         
-                                        // Simplifier avant de copier
                                         if (feature.geometry && feature.geometry.coordinates) {
                                             feature.geometry.coordinates = simplifyGeometry(feature.geometry.coordinates, 0.001, maxPoints);
                                         }
@@ -392,16 +395,16 @@
                 document.getElementById("progressFill").style.width = percent + "%";
                 document.getElementById("progressFill").textContent = percent + "%";
                 
-                // Pause pour laisser le navigateur respirer
-                await new Promise(resolve => setTimeout(resolve, 50));
+                await new Promise(resolve => setTimeout(resolve, 100));
             }
 
             geoDataCache = allFeatures;
             document.getElementById("loadingSection").classList.add("hidden");
             document.getElementById("successSection").classList.remove("hidden");
+            document.getElementById("successSection").innerHTML = "<strong>✅ Carte chargée avec succès !</strong><br><small>L'Aisne (02) n'est pas affichée sur la carte mais reste disponible dans la liste.</small>";
             setTimeout(function() {
                 document.getElementById("successSection").classList.add("hidden");
-            }, 5000);
+            }, 8000);
             document.getElementById("toggleViewBtn").disabled = false;
             isLoadingGeo = false;
             displayGeoData();
