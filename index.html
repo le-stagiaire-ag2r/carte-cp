@@ -338,6 +338,17 @@
                 updateWhenZooming: false
             }).addTo(map);
             geoLayerGroup = L.layerGroup().addTo(map);
+            
+            // Désactiver les tooltips pendant le déplacement de la carte
+            map.on('movestart', function() {
+                map.closePopup();
+                map.eachLayer(function(layer) {
+                    if (layer.closeTooltip) {
+                        layer.closeTooltip();
+                    }
+                });
+            });
+            
             loadGeoData();
         }
 
@@ -622,4 +633,5 @@
         }
     </script>
 </body>
+</html>
 </html>
