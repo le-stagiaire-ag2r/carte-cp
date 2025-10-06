@@ -63,6 +63,7 @@
                     <button class="btn-green" id="toggleViewBtn" onclick="toggleView()">Vue Carte / Liste</button>
                     <button class="btn-blue" onclick="exportData()">Exporter</button>
                     <button class="btn-purple" onclick="reloadCSV()">Recharger CSV</button>
+                    <button class="btn-purple" onclick="reloadMap()">Recharger Carte</button>
                     <button class="btn-red" onclick="clearAll()">Effacer tout</button>
                     <div class="stats" id="stats"></div>
                 </div>
@@ -575,6 +576,18 @@
                     map.remove();
                     map = null;
                     geoLayerGroup = null;
+                }
+            }
+        }
+
+        function reloadMap() {
+            if (confirm("Recharger la carte avec les nouvelles optimisations ? Vos zones colorées seront conservées.")) {
+                geoDataCache = null;
+                if (map) {
+                    geoLayerGroup.clearLayers();
+                }
+                if (currentView === "map" && map) {
+                    loadGeoData();
                 }
             }
         }
