@@ -171,20 +171,28 @@
 
         function initColorGrid() {
             var grid = document.getElementById("colorGrid");
-            colors.forEach(function(color) {
+            var fragment = document.createDocumentFragment();
+            for (var i = 0; i < colors.length; i++) {
+                var color = colors[i];
                 var btn = document.createElement("div");
                 btn.className = "color-btn";
                 btn.style.backgroundColor = color.hex;
                 btn.title = color.name;
-                btn.onclick = function() { selectColor(color.hex, btn); };
+                btn.onclick = (function(c, b) {
+                    return function() { selectColor(c.hex, b); };
+                })(color, btn);
                 if (color.hex === selectedColor) btn.classList.add("selected");
-                grid.appendChild(btn);
-            });
+                fragment.appendChild(btn);
+            }
+            grid.appendChild(fragment);
         }
 
         function selectColor(hex, element) {
             selectedColor = hex;
-            document.querySelectorAll(".color-btn").forEach(btn => btn.classList.remove("selected"));
+            var buttons = document.querySelectorAll(".color-btn");
+            for (var i = 0; i < buttons.length; i++) {
+                buttons[i].classList.remove("selected");
+            }
             element.classList.add("selected");
         }
 
@@ -194,8 +202,7 @@
             
             var reader = new FileReader();
             reader.onload = function(e) {
-                var text = e.target.result;
-                parseCSV(text);
+                parseCSV(e.target.result);
             };
             reader.readAsText(file);
         }
@@ -213,7 +220,6 @@
                     var commune = parts[0].trim();
                     var cp = parts[1].trim();
                     
-                    // Gérer les codes postaux à 4 chiffres (Aisne 02)
                     if (cp.length === 4 && !isNaN(cp)) {
                         cp = "0" + cp;
                     }
@@ -246,23 +252,31 @@
             var search = document.getElementById("searchInput").value.toLowerCase();
             var dept = document.getElementById("deptSelect").value;
             
-            var filtered = postalData.filter(function(item) {
+            var filtered = [];
+            for (var i = 0; i < postalData.length; i++) {
+                var item = postalData[i];
                 var matchDept = dept === "all" || item.dept === dept;
-                var matchSearch = !search || item.commune.toLowerCase().includes(search) || item.cp.includes(search);
-                return matchDept && matchSearch;
-            });
+                var matchSearch = !search || item.commune.toLowerCase().indexOf(search) !== -1 || item.cp.indexOf(search) !== -1;
+                if (matchDept && matchSearch) {
+                    filtered.push(item);
+                }
+            }
 
             var grouped = {};
-            filtered.forEach(function(item) {
+            for (var i = 0; i < filtered.length; i++) {
+                var item = filtered[i];
                 if (!grouped[item.cp]) grouped[item.cp] = [];
                 grouped[item.cp].push(item.commune);
-            });
+            }
 
             var grid = document.getElementById("postalGrid");
             grid.innerHTML = "";
-            document.getElementById("postalCount").textContent = Object.keys(grouped).length;
+            var sortedCps = Object.keys(grouped).sort();
+            document.getElementById("postalCount").textContent = sortedCps.length;
 
-            Object.keys(grouped).sort().forEach(function(cp) {
+            var fragment = document.createDocumentFragment();
+            for (var i = 0; i < sortedCps.length; i++) {
+                var cp = sortedCps[i];
                 var zone = zones[cp];
                 var communes = grouped[cp];
                 var btn = document.createElement("div");
@@ -270,11 +284,14 @@
                 btn.style.backgroundColor = zone ? zone.color : "#ffffff";
                 btn.style.color = zone && zone.color !== "#FFFFFF" ? "#fff" : "#000";
                 btn.title = communes.join(", ") + "\n" + (zone ? zone.name : "Non attribué");
-                btn.onclick = function() { togglePostalCode(cp); };
+                btn.onclick = (function(postal) {
+                    return function() { togglePostalCode(postal); };
+                })(cp);
                 btn.innerHTML = '<div class="postal-code">' + cp + "</div>" + 
                     (zone ? '<div class="postal-zone">' + zone.name + "</div>" : "");
-                grid.appendChild(btn);
-            });
+                fragment.appendChild(btn);
+            }
+            grid.appendChild(fragment);
         }
 
         function togglePostalCode(cp) {
@@ -308,7 +325,11 @@
         }
 
         function initMap() {
-            map = L.map("map").setView([49.5, 1.5], 8);
+            map = L.map("map", {
+                preferCanvas: false,
+                renderer: L.svg()
+            }).setView([49.5, 1.5], 8);
+            
             L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
                 attribution: "© OpenStreetMap",
                 maxZoom: 19
@@ -327,7 +348,7 @@
             var depts = Object.keys(departments);
             var total = depts.length;
             var loaded = 0;
-            var allFeatures = [];
+            var cpToFeatures = {};
 
             for (var i = 0; i < depts.length; i++) {
                 var dept = depts[i];
@@ -338,28 +359,31 @@
                     if (response.ok) {
                         var data = await response.json();
                         if (data.features) {
-                            data.features.forEach(function(feature) {
+                            for (var j = 0; j < data.features.length; j++) {
+                                var feature = data.features[j];
                                 var communeName = feature.properties.nom;
                                 var apiCodesPostaux = feature.properties.codesPostaux || [];
                                 
-                                var matchingItems = postalData.filter(function(d) {
-                                    return d.commune.toLowerCase() === communeName.toLowerCase() || apiCodesPostaux.includes(d.cp);
-                                });
-                                
-                                if (matchingItems.length > 0) {
-                                    matchingItems.forEach(function(item) {
-                                        var featureCopy = JSON.parse(JSON.stringify(feature));
-                                        featureCopy.properties.codePostal = item.cp;
-                                        featureCopy.properties.matchedCommune = item.commune;
-                                        
-                                        if (featureCopy.geometry && featureCopy.geometry.coordinates) {
-                                            featureCopy.geometry.coordinates = simplifyCoordinates(featureCopy.geometry.coordinates, 0.001);
+                                for (var k = 0; k < postalData.length; k++) {
+                                    var d = postalData[k];
+                                    if (d.commune.toLowerCase() === communeName.toLowerCase() || apiCodesPostaux.indexOf(d.cp) !== -1) {
+                                        if (!cpToFeatures[d.cp]) {
+                                            cpToFeatures[d.cp] = {
+                                                cp: d.cp,
+                                                commune: d.commune,
+                                                geometries: []
+                                            };
                                         }
                                         
-                                        allFeatures.push(featureCopy);
-                                    });
+                                        if (feature.geometry && feature.geometry.coordinates) {
+                                            cpToFeatures[d.cp].geometries.push({
+                                                type: feature.geometry.type,
+                                                coordinates: simplifyCoordinates(feature.geometry.coordinates, 0.003)
+                                            });
+                                        }
+                                    }
                                 }
-                            });
+                            }
                         }
                     }
                 } catch (error) {
@@ -371,10 +395,10 @@
                 document.getElementById("progressFill").style.width = percent + "%";
                 document.getElementById("progressFill").textContent = percent + "%";
                 
-                await new Promise(resolve => setTimeout(resolve, 100));
+                await new Promise(function(resolve) { setTimeout(resolve, 30); });
             }
 
-            geoDataCache = allFeatures;
+            geoDataCache = cpToFeatures;
             document.getElementById("loadingSection").classList.add("hidden");
             document.getElementById("successSection").classList.remove("hidden");
             setTimeout(function() {
@@ -393,10 +417,10 @@
             }
             
             if (Array.isArray(coords[0]) && typeof coords[0][0] === 'number') {
-                if (coords.length <= 15) return coords;
+                if (coords.length <= 6) return coords;
                 
                 var simplified = [coords[0]];
-                var step = Math.max(2, Math.floor(coords.length / 40));
+                var step = Math.max(5, Math.floor(coords.length / 5));
                 
                 for (var i = step; i < coords.length - 1; i += step) {
                     simplified.push(coords[i]);
@@ -406,35 +430,76 @@
                 return simplified;
             }
             
-            return coords.map(function(c) {
-                return simplifyCoordinates(c, tolerance);
-            });
+            var result = [];
+            for (var i = 0; i < coords.length; i++) {
+                result.push(simplifyCoordinates(coords[i], tolerance));
+            }
+            return result;
         }
 
         function displayGeoData() {
             if (!map || !geoDataCache) return;
             geoLayerGroup.clearLayers();
             
-            geoDataCache.forEach(function(feature) {
-                var cp = feature.properties.codePostal;
-                if (!cp) return;
+            var cps = Object.keys(geoDataCache);
+            var batchSize = 20;
+            var index = 0;
+            
+            function displayBatch() {
+                var end = Math.min(index + batchSize, cps.length);
                 
-                var zone = zones[cp];
-                var color = zone ? zone.color : "#e5e7eb";
-                
-                var layer = L.geoJSON(feature, {
-                    style: {fillColor: color, fillOpacity: 0.7, color: "#666", weight: 1},
-                    onEachFeature: function(f, l) {
-                        l.on("click", function() { togglePostalCode(cp); });
-                        var name = f.properties.nom || f.properties.matchedCommune || "";
-                        l.bindTooltip("<strong>" + name + "</strong><br/>CP: " + cp + 
-                            (zone ? "<br/><span style='color:" + color + ";font-weight:bold;'>" + zone.name + "</span>" : ""),
-                            {sticky: true}
-                        );
+                for (var i = index; i < end; i++) {
+                    var cpData = geoDataCache[cps[i]];
+                    var cp = cpData.cp;
+                    var zone = zones[cp];
+                    var color = zone ? zone.color : "#e5e7eb";
+                    
+                    for (var j = 0; j < cpData.geometries.length; j++) {
+                        var geom = cpData.geometries[j];
+                        var feature = {
+                            type: "Feature",
+                            properties: {
+                                codePostal: cp,
+                                commune: cpData.commune
+                            },
+                            geometry: {
+                                type: geom.type,
+                                coordinates: geom.coordinates
+                            }
+                        };
+                        
+                        var layer = L.geoJSON(feature, {
+                            style: {
+                                fillColor: color,
+                                fillOpacity: 0.7,
+                                color: "#666",
+                                weight: 1
+                            },
+                            onEachFeature: (function(cpClosure, zoneClosure, colorClosure) {
+                                return function(f, l) {
+                                    l.on("click", function() {
+                                        togglePostalCode(cpClosure);
+                                    });
+                                    var name = f.properties.commune || "";
+                                    l.bindTooltip("<strong>" + name + "</strong><br/>CP: " + cpClosure + 
+                                        (zoneClosure ? "<br/><span style='color:" + colorClosure + ";font-weight:bold;'>" + zoneClosure.name + "</span>" : ""),
+                                        {sticky: true}
+                                    );
+                                };
+                            })(cp, zone, color)
+                        });
+                        geoLayerGroup.addLayer(layer);
                     }
-                });
-                geoLayerGroup.addLayer(layer);
-            });
+                }
+                
+                index = end;
+                
+                if (index < cps.length) {
+                    requestAnimationFrame(displayBatch);
+                }
+            }
+            
+            displayBatch();
         }
 
         function updateMapColors() {
@@ -443,19 +508,33 @@
 
         function exportData() {
             var colorGroups = {};
-            Object.entries(zones).forEach(function([cp, data]) {
+            var cpList = Object.keys(zones);
+            
+            for (var i = 0; i < cpList.length; i++) {
+                var cp = cpList[i];
+                var data = zones[cp];
                 if (!colorGroups[data.color]) {
                     colorGroups[data.color] = {name: data.name, postalCodes: []};
                 }
                 colorGroups[data.color].postalCodes.push(cp);
-            });
+            }
 
             var text = "EXPORT DES ZONES DE PERMANENCE\n================================\n\n";
-            Object.entries(colorGroups).forEach(function([color, data]) {
-                var colorName = colors.find(c => c.hex === color);
+            var colorKeys = Object.keys(colorGroups);
+            
+            for (var i = 0; i < colorKeys.length; i++) {
+                var color = colorKeys[i];
+                var data = colorGroups[color];
+                var colorName = null;
+                for (var j = 0; j < colors.length; j++) {
+                    if (colors[j].hex === color) {
+                        colorName = colors[j];
+                        break;
+                    }
+                }
                 text += data.name + " (" + (colorName ? colorName.name : "Couleur personnalisée") + ")\n";
                 text += "Codes postaux (" + data.postalCodes.length + "): " + data.postalCodes.sort().join(", ") + "\n\n";
-            });
+            }
 
             var blob = new Blob([text], {type: "text/plain"});
             var url = URL.createObjectURL(blob);
@@ -495,23 +574,31 @@
         }
 
         function saveToStorage() {
-            localStorage.setItem("postalData", JSON.stringify(postalData));
-            localStorage.setItem("zones", JSON.stringify(zones));
+            try {
+                localStorage.setItem("postalData", JSON.stringify(postalData));
+                localStorage.setItem("zones", JSON.stringify(zones));
+            } catch(e) {
+                console.log("Erreur sauvegarde");
+            }
         }
 
         function loadFromStorage() {
-            var savedData = localStorage.getItem("postalData");
-            var savedZones = localStorage.getItem("zones");
-            
-            if (savedData) {
-                postalData = JSON.parse(savedData);
-                showMainSection();
-                updatePostalGrid();
-            }
-            if (savedZones) {
-                zones = JSON.parse(savedZones);
-                updatePostalGrid();
-                updateStats();
+            try {
+                var savedData = localStorage.getItem("postalData");
+                var savedZones = localStorage.getItem("zones");
+                
+                if (savedData) {
+                    postalData = JSON.parse(savedData);
+                    showMainSection();
+                    updatePostalGrid();
+                }
+                if (savedZones) {
+                    zones = JSON.parse(savedZones);
+                    updatePostalGrid();
+                    updateStats();
+                }
+            } catch(e) {
+                console.log("Erreur chargement");
             }
         }
     </script>
