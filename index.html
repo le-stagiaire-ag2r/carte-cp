@@ -1,1 +1,564 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { Download, Upload, Palette, Tag, List, Loader } from 'lucide-react';
 
+const PostalZoneMapper = () => {
+  const [postalData, setPostalData] = useState([]);
+  const [zones, setZones] = useState({});
+  const [selectedColor, setSelectedColor] = useState('#FF6B6B');
+  const [zoneName, setZoneName] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedDept, setSelectedDept] = useState('all');
+  const [loading, setLoading] = useState(false);
+  const [viewMode, setViewMode] = useState('list');
+  const [mapLoaded, setMapLoaded] = useState(false);
+  const mapContainerRef = useRef(null);
+  const mapRef = useRef(null);
+  const markersRef = useRef({});
+  const fileInputRef = useRef(null);
+
+  const colors = [
+    { name: 'Rouge', hex: '#FF6B6B' },
+    { name: 'Orange', hex: '#FFA07A' },
+    { name: 'Jaune', hex: '#FFD93D' },
+    { name: 'Vert clair', hex: '#6BCF7F' },
+    { name: 'Vert', hex: '#2ECC71' },
+    { name: 'Turquoise', hex: '#4ECDC4' },
+    { name: 'Bleu clair', hex: '#74B9FF' },
+    { name: 'Bleu', hex: '#3498DB' },
+    { name: 'Violet', hex: '#A29BFE' },
+    { name: 'Rose', hex: '#FD79A8' },
+    { name: 'Magenta', hex: '#E056FD' },
+    { name: 'Marron', hex: '#B8860B' },
+    { name: 'Gris', hex: '#95A5A6' },
+    { name: 'Noir', hex: '#2C3E50' },
+    { name: 'Blanc', hex: '#FFFFFF' }
+  ];
+
+  const departments = {
+    '02': 'Aisne',
+    '59': 'Nord',
+    '60': 'Oise',
+    '62': 'Pas-de-Calais',
+    '80': 'Somme',
+    '14': 'Calvados',
+    '27': 'Eure',
+    '50': 'Manche',
+    '61': 'Orne',
+    '76': 'Seine-Maritime'
+  };
+
+  // Coordonnées GPS approximatives des codes postaux (centres des villes principales)
+  const getPostalCodeCoordinates = (cp) => {
+    const coords = {
+      // Aisne (02)
+      '02000': [49.5637, 3.6244], '02100': [49.8472, 3.2864], '02200': [49.3792, 3.3633],
+      // Nord (59)
+      '59000': [50.6292, 3.0573], '59100': [50.6311, 3.0708], '59200': [50.6942, 3.1746],
+      '59300': [50.6333, 3.4167], '59400': [50.2667, 3.1333], '59500': [50.7239, 3.1844],
+      '59600': [50.3333, 3.5333], '59700': [50.6861, 3.1778],
+      // Pas-de-Calais (62)
+      '62000': [50.2914, 2.7767], '62100': [50.9511, 1.8589], '62200': [50.7264, 1.6181],
+      '62300': [50.4333, 2.8333], '62400': [50.3667, 2.6333], '62500': [50.5167, 2.4667],
+      // Somme (80)
+      '80000': [49.8942, 2.2958], '80100': [49.9167, 2.2667], '80200': [49.8500, 2.9167],
+      '80300': [50.0167, 2.5333], '80400': [49.8833, 2.5500],
+      // Calvados (14)
+      '14000': [49.1829, -0.3707], '14100': [49.1472, 0.2278], '14200': [49.1833, -0.3667],
+      '14300': [49.2833, -0.7167], '14400': [49.2833, -0.5167],
+      // Eure (27)
+      '27000': [49.0244, 1.1508], '27100': [49.0833, 0.3667], '27200': [49.2333, 1.2667],
+      '27300': [48.9000, 0.5333], '27400': [49.2167, 1.4333],
+      // Manche (50)
+      '50000': [49.1167, -1.0833], '50100': [49.6500, -1.6167], '50200': [49.0833, -1.1000],
+      '50300': [48.6500, -1.5167], '50400': [48.8333, -1.4500],
+      // Orne (61)
+      '61000': [48.4333, 0.0833], '61100': [48.5500, -0.6000], '61200': [48.6500, 0.2833],
+      '61300': [48.7333, 0.5167], '61400': [48.5833, 0.5667],
+      // Seine-Maritime (76)
+      '76000': [49.4431, 1.0993], '76100': [49.4944, 0.1079], '76200': [49.5333, 0.1167],
+      '76300': [49.6167, 0.7333], '76400': [49.7333, 0.3167], '76600': [49.5167, 0.8833]
+    };
+    
+    return coords[cp] || null;
+  };
+
+  useEffect(() => {
+    loadZonesFromStorage();
+    loadLeafletScript();
+  }, []);
+
+  useEffect(() => {
+    if (mapLoaded && viewMode === 'map' && postalData.length > 0 && !mapRef.current) {
+      initializeMap();
+    }
+  }, [mapLoaded, viewMode, postalData]);
+
+  useEffect(() => {
+    if (mapRef.current) {
+      updateMapMarkers();
+    }
+  }, [zones]);
+
+  const loadLeafletScript = () => {
+    console.log('Début chargement Leaflet...');
+    
+    if (window.L) {
+      console.log('Leaflet déjà chargé !');
+      setMapLoaded(true);
+      return;
+    }
+
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+    link.onload = () => console.log('CSS Leaflet chargé');
+    document.head.appendChild(link);
+
+    const script = document.createElement('script');
+    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+    script.onload = () => {
+      console.log('Script Leaflet chargé !');
+      setMapLoaded(true);
+    };
+    script.onerror = () => {
+      console.error('Erreur chargement Leaflet');
+      alert('Erreur lors du chargement de la carte. Vérifiez votre connexion internet.');
+    };
+    document.head.appendChild(script);
+  };
+
+  const initializeMap = () => {
+    console.log('Initialisation de la carte...');
+    console.log('mapContainerRef:', mapContainerRef.current);
+    console.log('mapRef:', mapRef.current);
+    console.log('window.L:', window.L);
+    
+    if (!mapContainerRef.current || mapRef.current) {
+      console.log('Carte déjà initialisée ou container non disponible');
+      return;
+    }
+
+    try {
+      const L = window.L;
+      
+      console.log('Création de la carte...');
+      // Centrer sur la région Hauts-de-France / Normandie
+      const map = L.map(mapContainerRef.current).setView([49.5, 1.5], 8);
+      
+      console.log('Ajout des tuiles...');
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 19
+      }).addTo(map);
+
+      mapRef.current = map;
+      console.log('Carte créée avec succès !');
+      
+      // Ajouter les marqueurs
+      updateMapMarkers();
+    } catch (error) {
+      console.error('Erreur lors de l\'initialisation:', error);
+      alert('Erreur lors de l\'initialisation de la carte: ' + error.message);
+    }
+  };
+
+  const updateMapMarkers = () => {
+    if (!mapRef.current || !window.L) return;
+
+    const L = window.L;
+    
+    // Supprimer les anciens marqueurs
+    Object.values(markersRef.current).forEach(marker => {
+      mapRef.current.removeLayer(marker);
+    });
+    markersRef.current = {};
+
+    // Grouper par code postal
+    const postalGroups = {};
+    postalData.forEach(item => {
+      if (!postalGroups[item.cp]) {
+        postalGroups[item.cp] = [];
+      }
+      postalGroups[item.cp].push(item.commune);
+    });
+
+    // Ajouter les nouveaux marqueurs
+    Object.entries(postalGroups).forEach(([cp, communes]) => {
+      const coords = getPostalCodeCoordinates(cp);
+      if (!coords) return;
+
+      const zone = zones[cp];
+      const color = zone?.color || '#95a5a6';
+
+      const marker = L.circleMarker([coords[0], coords[1]], {
+        radius: 8,
+        fillColor: color,
+        color: '#000',
+        weight: 2,
+        opacity: 1,
+        fillOpacity: 0.8
+      }).addTo(mapRef.current);
+
+      marker.bindPopup(`
+        <div style="text-align: center;">
+          <strong style="font-size: 16px;">${cp}</strong><br/>
+          <span style="font-size: 12px; color: #666;">${communes.length} commune(s)</span><br/>
+          ${zone ? `<span style="color: ${color}; font-weight: bold;">${zone.name}</span>` : '<span style="color: #999;">Non attribué</span>'}
+        </div>
+      `);
+
+      marker.on('click', () => {
+        togglePostalCode(cp);
+      });
+
+      markersRef.current[cp] = marker;
+    });
+  };
+
+  const handleFileUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    setLoading(true);
+    const reader = new FileReader();
+
+    reader.onload = (e) => {
+      const text = e.target.result;
+      const lines = text.split('\n');
+      const data = [];
+
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+
+        const parts = line.split(';');
+        if (parts.length >= 2) {
+          const commune = parts[0].trim();
+          let cp = parts[1].trim();
+
+          // Ajouter le 0 devant si code postal = 4 chiffres
+          if (cp.length === 4 && !isNaN(cp)) {
+            cp = '0' + cp;
+          }
+
+          if (cp.length >= 2) {
+            const dept = cp.substring(0, 2);
+            if (departments[dept]) {
+              data.push({ commune, cp, dept });
+            }
+          }
+        }
+      }
+
+      setPostalData(data);
+      setLoading(false);
+      localStorage.setItem('postalDataCache', JSON.stringify(data));
+    };
+
+    reader.readAsText(file);
+  };
+
+  const loadZonesFromStorage = () => {
+    const saved = localStorage.getItem('postalZones');
+    if (saved) {
+      setZones(JSON.parse(saved));
+    }
+    
+    const cachedData = localStorage.getItem('postalDataCache');
+    if (cachedData) {
+      setPostalData(JSON.parse(cachedData));
+    }
+  };
+
+  const saveZonesToStorage = (newZones) => {
+    localStorage.setItem('postalZones', JSON.stringify(newZones));
+  };
+
+  const togglePostalCode = (cp) => {
+    const newZones = { ...zones };
+    
+    if (newZones[cp]?.color === selectedColor) {
+      delete newZones[cp];
+    } else {
+      newZones[cp] = {
+        color: selectedColor,
+        name: zoneName || 'Zone sans nom'
+      };
+    }
+    
+    setZones(newZones);
+    saveZonesToStorage(newZones);
+  };
+
+  const exportData = () => {
+    const colorGroups = {};
+    
+    Object.entries(zones).forEach(([cp, data]) => {
+      if (!colorGroups[data.color]) {
+        colorGroups[data.color] = {
+          name: data.name,
+          postalCodes: []
+        };
+      }
+      colorGroups[data.color].postalCodes.push(cp);
+    });
+
+    let exportText = 'EXPORT DES ZONES DE PERMANENCE\n';
+    exportText += '================================\n\n';
+    
+    Object.entries(colorGroups).forEach(([color, data]) => {
+      const colorName = colors.find(c => c.hex === color)?.name || 'Couleur personnalisée';
+      exportText += `${data.name} (${colorName})\n`;
+      exportText += `Codes postaux (${data.postalCodes.length}): ${data.postalCodes.sort().join(', ')}\n\n`;
+    });
+
+    const blob = new Blob([exportText], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'zones-permanence.txt';
+    a.click();
+  };
+
+  const clearAll = () => {
+    if (window.confirm('Effacer toutes les zones colorées ?')) {
+      setZones({});
+      localStorage.removeItem('postalZones');
+    }
+  };
+
+  const reloadCSV = () => {
+    setPostalData([]);
+    setZones({});
+    localStorage.removeItem('postalDataCache');
+    localStorage.removeItem('postalZones');
+    fileInputRef.current?.click();
+  };
+
+  const filteredData = postalData.filter(item => {
+    const matchesDept = selectedDept === 'all' || item.dept === selectedDept;
+    const matchesSearch = !searchTerm || 
+      item.commune.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.cp.includes(searchTerm);
+    return matchesDept && matchesSearch;
+  });
+
+  const groupedByCP = {};
+  filteredData.forEach(item => {
+    if (!groupedByCP[item.cp]) {
+      groupedByCP[item.cp] = [];
+    }
+    groupedByCP[item.cp].push(item.commune);
+  });
+
+  return (
+    <div className="min-h-screen bg-gray-50 p-4">
+      <div className="max-w-7xl mx-auto">
+        <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+          <h1 className="text-3xl font-bold mb-2">Carte des Zones de Permanence</h1>
+          <p className="text-gray-600 mb-4">Hauts-de-France & Normandie - Carte interactive OpenStreetMap</p>
+          
+          {postalData.length === 0 ? (
+            <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-6 mb-6">
+              <h2 className="text-xl font-bold mb-3 flex items-center gap-2">
+                <Upload size={24} />
+                Charger le fichier CSV
+              </h2>
+              <p className="mb-4 text-gray-700">
+                Pour commencer, veuillez charger votre fichier CSV
+              </p>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv"
+                onChange={handleFileUpload}
+                className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+              />
+              {loading && <p className="mt-3 text-blue-600 flex items-center gap-2"><Loader className="animate-spin" size={20} />Chargement en cours...</p>}
+            </div>
+          ) : (
+            <>
+              <div className="flex gap-4 mb-6 flex-wrap">
+                <button
+                  onClick={() => setViewMode(viewMode === 'map' ? 'list' : 'map')}
+                  className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+                >
+                  {viewMode === 'map' ? <List size={20} /> : '🗺️'}
+                  {viewMode === 'map' ? 'Vue Liste' : 'Vue Carte'}
+                </button>
+                <button
+                  onClick={exportData}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                >
+                  <Download size={20} />
+                  Exporter
+                </button>
+                <button
+                  onClick={reloadCSV}
+                  className="flex items-center gap-2 px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600"
+                >
+                  <Upload size={20} />
+                  Recharger CSV
+                </button>
+                <button
+                  onClick={clearAll}
+                  className="flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+                >
+                  Effacer tout
+                </button>
+                <div className="flex-1 text-right">
+                  <span className="text-sm text-gray-600">
+                    {postalData.length} communes • {Object.keys(zones).length} codes postaux colorés
+                  </span>
+                </div>
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv"
+                onChange={handleFileUpload}
+                className="hidden"
+              />
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    <Palette className="inline mr-2" size={16} />
+                    Couleur sélectionnée
+                  </label>
+                  <div className="grid grid-cols-5 gap-2">
+                    {colors.map((color) => (
+                      <button
+                        key={color.hex}
+                        onClick={() => setSelectedColor(color.hex)}
+                        className={`h-12 rounded border-2 ${
+                          selectedColor === color.hex ? 'border-black border-4' : 'border-gray-300'
+                        }`}
+                        style={{ backgroundColor: color.hex }}
+                        title={color.name}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    <Tag className="inline mr-2" size={16} />
+                    Nom de la zone
+                  </label>
+                  <input
+                    type="text"
+                    value={zoneName}
+                    onChange={(e) => setZoneName(e.target.value)}
+                    placeholder="Ex: Zone de Sarah"
+                    className="w-full px-4 py-2 border rounded focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">Rechercher</label>
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Commune ou code postal..."
+                    className="w-full px-4 py-2 border rounded"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Département</label>
+                  <select
+                    value={selectedDept}
+                    onChange={(e) => setSelectedDept(e.target.value)}
+                    className="w-full px-4 py-2 border rounded"
+                  >
+                    <option value="all">Tous les départements</option>
+                    {Object.entries(departments).map(([code, name]) => (
+                      <option key={code} value={code}>{code} - {name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+
+        {postalData.length > 0 && (
+          <>
+            {viewMode === 'map' && (
+              <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+                <h2 className="text-xl font-bold mb-4">Carte interactive</h2>
+                <div className="bg-blue-50 p-4 rounded mb-4">
+                  <p className="text-sm text-gray-700">
+                    <strong>🗺️ Carte OpenStreetMap :</strong> Cliquez sur les points colorés pour attribuer/modifier les zones. 
+                    Utilisez la molette pour zoomer et glissez pour vous déplacer.
+                  </p>
+                </div>
+                {!mapLoaded ? (
+                  <div className="flex flex-col items-center justify-center h-96 gap-4">
+                    <Loader className="animate-spin" size={48} />
+                    <span className="text-lg">Chargement de Leaflet depuis CDN...</span>
+                    <span className="text-sm text-gray-600">Cela peut prendre quelques secondes</span>
+                    <button 
+                      onClick={() => window.location.reload()} 
+                      className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                    >
+                      Recharger la page si bloqué
+                    </button>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="bg-green-50 border border-green-200 p-2 rounded mb-2 text-sm text-green-700">
+                      ✅ Leaflet chargé - Initialisation de la carte...
+                    </div>
+                    <div 
+                      ref={mapContainerRef} 
+                      style={{ height: '600px', width: '100%' }}
+                      className="rounded border-2 border-gray-300"
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="bg-white rounded-lg shadow-lg p-6">
+              <h2 className="text-xl font-bold mb-4">
+                Codes postaux ({Object.keys(groupedByCP).length})
+              </h2>
+              <p className="text-sm text-gray-600 mb-4">
+                Cliquez sur un code postal pour lui attribuer la couleur et le nom de zone sélectionnés
+              </p>
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                {Object.entries(groupedByCP).sort().map(([cp, communes]) => {
+                  const zone = zones[cp];
+                  return (
+                    <button
+                      key={cp}
+                      onClick={() => togglePostalCode(cp)}
+                      className="p-3 rounded border-2 transition-all hover:scale-105"
+                      style={{
+                        backgroundColor: zone?.color || '#ffffff',
+                        borderColor: zone ? '#000' : '#e5e7eb',
+                        color: zone?.color === '#FFFFFF' ? '#000' : zone ? '#fff' : '#000'
+                      }}
+                      title={`${communes.join(', ')}\n${zone ? zone.name : 'Non attribué'}`}
+                    >
+                      <div className="font-bold text-lg">{cp}</div>
+                      {zone && (
+                        <div className="text-xs mt-1 truncate">{zone.name}</div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default PostalZoneMapper;
