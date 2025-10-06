@@ -424,10 +424,10 @@
             }
             
             if (Array.isArray(coords[0]) && typeof coords[0][0] === 'number') {
-                if (coords.length <= 4) return coords;
+                if (coords.length <= 12) return coords;
                 
                 var simplified = [coords[0]];
-                var step = Math.max(8, Math.floor(coords.length / 3));
+                var step = Math.max(2, Math.floor(coords.length / 10));
                 
                 for (var i = step; i < coords.length - 1; i += step) {
                     simplified.push(coords[i]);
