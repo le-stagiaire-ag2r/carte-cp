@@ -4,188 +4,39 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Carte des Zones de Permanence</title>
-    
-    <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f9fafb;
-            padding: 20px;
-        }
-        
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-        
-        .card {
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            padding: 24px;
-            margin-bottom: 24px;
-        }
-        
-        h1 {
-            font-size: 28px;
-            margin-bottom: 8px;
-        }
-        
-        .subtitle {
-            color: #6b7280;
-            margin-bottom: 20px;
-        }
-        
-        .btn-group {
-            display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-            margin-bottom: 24px;
-        }
-        
-        button {
-            padding: 10px 16px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 500;
-            transition: all 0.2s;
-        }
-        
-        button:hover {
-            opacity: 0.9;
-            transform: translateY(-1px);
-        }
-        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #f9fafb; padding: 20px; }
+        .container { max-width: 1400px; margin: 0 auto; }
+        .card { background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 24px; margin-bottom: 24px; }
+        h1 { font-size: 28px; margin-bottom: 8px; }
+        .subtitle { color: #6b7280; margin-bottom: 20px; }
+        .btn-group { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 24px; }
+        button { padding: 10px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.2s; }
+        button:hover { opacity: 0.9; transform: translateY(-1px); }
         .btn-green { background: #10b981; color: white; }
         .btn-blue { background: #3b82f6; color: white; }
         .btn-purple { background: #8b5cf6; color: white; }
         .btn-red { background: #ef4444; color: white; }
-        
-        .grid-2 {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 16px;
-            margin-bottom: 16px;
-        }
-        
-        label {
-            display: block;
-            font-size: 14px;
-            font-weight: 500;
-            margin-bottom: 8px;
-        }
-        
-        input[type="text"], input[type="file"], select {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #d1d5db;
-            border-radius: 6px;
-            font-size: 14px;
-        }
-        
-        .color-grid {
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 8px;
-        }
-        
-        .color-btn {
-            height: 48px;
-            border: 2px solid #d1d5db;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        
-        .color-btn.selected {
-            border: 4px solid #000;
-            transform: scale(1.05);
-        }
-        
-        #map {
-            height: 600px;
-            border-radius: 8px;
-            border: 2px solid #d1d5db;
-        }
-        
-        .info-box {
-            background: #dbeafe;
-            border: 1px solid #93c5fd;
-            padding: 16px;
-            border-radius: 6px;
-            margin-bottom: 16px;
-            font-size: 14px;
-        }
-        
-        .postal-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-            gap: 8px;
-        }
-        
-        .postal-btn {
-            padding: 12px;
-            border: 2px solid #e5e7eb;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.2s;
-            text-align: center;
-        }
-        
-        .postal-btn:hover {
-            transform: scale(1.05);
-        }
-        
-        .postal-btn.assigned {
-            border-color: #000;
-        }
-        
-        .postal-code {
-            font-weight: bold;
-            font-size: 18px;
-        }
-        
-        .postal-zone {
-            font-size: 11px;
-            margin-top: 4px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        
-        .stats {
-            text-align: right;
-            color: #6b7280;
-            font-size: 14px;
-        }
-        
-        .upload-box {
-            background: #dbeafe;
-            border: 2px solid #93c5fd;
-            padding: 24px;
-            border-radius: 8px;
-            text-align: center;
-        }
-        
-        .hidden {
-            display: none;
-        }
-        
-        @media (max-width: 768px) {
-            .grid-2 {
-                grid-template-columns: 1fr;
-            }
-        }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+        label { display: block; font-size: 14px; font-weight: 500; margin-bottom: 8px; }
+        input[type="text"], input[type="file"], select { width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; }
+        .color-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+        .color-btn { height: 48px; border: 2px solid #d1d5db; border-radius: 6px; cursor: pointer; transition: all 0.2s; }
+        .color-btn.selected { border: 4px solid #000; transform: scale(1.05); }
+        #map { height: 600px; border-radius: 8px; border: 2px solid #d1d5db; }
+        .info-box { background: #dbeafe; border: 1px solid #93c5fd; padding: 16px; border-radius: 6px; margin-bottom: 16px; font-size: 14px; }
+        .postal-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
+        .postal-btn { padding: 12px; border: 2px solid #e5e7eb; border-radius: 6px; cursor: pointer; transition: all 0.2s; text-align: center; }
+        .postal-btn:hover { transform: scale(1.05); }
+        .postal-btn.assigned { border-color: #000; }
+        .postal-code { font-weight: bold; font-size: 18px; }
+        .postal-zone { font-size: 11px; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .stats { text-align: right; color: #6b7280; font-size: 14px; flex: 1; }
+        .upload-box { background: #dbeafe; border: 2px solid #93c5fd; padding: 24px; border-radius: 8px; text-align: center; }
+        .hidden { display: none; }
+        @media (max-width: 768px) { .grid-2 { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
@@ -197,12 +48,12 @@
             <div id="uploadSection" class="upload-box">
                 <h2 style="margin-bottom: 16px;">📁 Charger le fichier CSV</h2>
                 <p style="margin-bottom: 16px;">Pour commencer, veuillez charger votre fichier CSV</p>
-                <input type="file" id="fileInput" accept=".csv" style="max-width: 400px; margin: 0 auto;">
+                <input type="file" id="fileInput" accept=".csv">
             </div>
             
             <div id="mainSection" class="hidden">
                 <div class="btn-group">
-                    <button class="btn-green" onclick="toggleView()">🗺️ Vue Carte</button>
+                    <button class="btn-green" onclick="toggleView()">🗺️ Vue Carte / Liste</button>
                     <button class="btn-blue" onclick="exportData()">⬇️ Exporter</button>
                     <button class="btn-purple" onclick="reloadCSV()">📁 Recharger CSV</button>
                     <button class="btn-red" onclick="clearAll()">🗑️ Effacer tout</button>
@@ -214,7 +65,6 @@
                         <label>🎨 Couleur sélectionnée</label>
                         <div class="color-grid" id="colorGrid"></div>
                     </div>
-                    
                     <div>
                         <label>🏷️ Nom de la zone</label>
                         <input type="text" id="zoneName" placeholder="Ex: Zone de Sarah">
@@ -249,8 +99,7 @@
         <div id="mapSection" class="card hidden">
             <h2 style="margin-bottom: 16px;">Carte interactive</h2>
             <div class="info-box">
-                <strong>🗺️ Carte OpenStreetMap :</strong> Cliquez sur les points colorés pour attribuer/modifier les zones. 
-                Utilisez la molette pour zoomer et glissez pour vous déplacer.
+                <strong>🗺️ Carte OpenStreetMap :</strong> Cliquez sur les points colorés pour attribuer/modifier les zones.
             </div>
             <div id="map"></div>
         </div>
@@ -263,336 +112,10 @@
             <div class="postal-grid" id="postalGrid"></div>
         </div>
     </div>
-    
-    <!-- Leaflet JS -->
+
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    
     <script>
-        // Variables globales
-        let postalData = [];
-        let zones = {};
-        let selectedColor = '#FF6B6B';
-        let currentView = 'list';
-        let map = null;
-        let markers = {};
-        
-        const colors = [
-            { name: 'Rouge', hex: '#FF6B6B' },
-            { name: 'Orange', hex: '#FFA07A' },
-            { name: 'Jaune', hex: '#FFD93D' },
-            { name: 'Vert clair', hex: '#6BCF7F' },
-            { name: 'Vert', hex: '#2ECC71' },
-            { name: 'Turquoise', hex: '#4ECDC4' },
-            { name: 'Bleu clair', hex: '#74B9FF' },
-            { name: 'Bleu', hex: '#3498DB' },
-            { name: 'Violet', hex: '#A29BFE' },
-            { name: 'Rose', hex: '#FD79A8' },
-            { name: 'Magenta', hex: '#E056FD' },
-            { name: 'Marron', hex: '#B8860B' },
-            { name: 'Gris', hex: '#95A5A6' },
-            { name: 'Noir', hex: '#2C3E50' },
-            { name: 'Blanc', hex: '#FFFFFF' }
-        ];
-        
-        const departments = {
-            '02': 'Aisne', '59': 'Nord', '60': 'Oise', '62': 'Pas-de-Calais',
-            '80': 'Somme', '14': 'Calvados', '27': 'Eure', '50': 'Manche',
-            '61': 'Orne', '76': 'Seine-Maritime'
-        };
-        
-        const postalCoords = {
-            '02000': [49.5637, 3.6244], '02100': [49.8472, 3.2864], '02200': [49.3792, 3.3633],
-            '59000': [50.6292, 3.0573], '59100': [50.6311, 3.0708], '59200': [50.6942, 3.1746],
-            '59300': [50.6333, 3.4167], '59400': [50.2667, 3.1333], '59500': [50.7239, 3.1844],
-            '62000': [50.2914, 2.7767], '62100': [50.9511, 1.8589], '62200': [50.7264, 1.6181],
-            '80000': [49.8942, 2.2958], '80100': [49.9167, 2.2667], '80200': [49.8500, 2.9167],
-            '14000': [49.1829, -0.3707], '14100': [49.1472, 0.2278], '14200': [49.1833, -0.3667],
-            '27000': [49.0244, 1.1508], '27100': [49.0833, 0.3667], '27200': [49.2333, 1.2667],
-            '50000': [49.1167, -1.0833], '50100': [49.6500, -1.6167], '50200': [49.0833, -1.1000],
-            '61000': [48.4333, 0.0833], '61100': [48.5500, -0.6000], '61200': [48.6500, 0.2833],
-            '76000': [49.4431, 1.0993], '76100': [49.4944, 0.1079], '76200': [49.5333, 0.1167]
-        };
-        
-        // Initialisation
-        document.addEventListener('DOMContentLoaded', function() {
-            loadFromStorage();
-            initColorGrid();
-            
-            document.getElementById('fileInput').addEventListener('change', handleFileUpload);
-            document.getElementById('searchInput').addEventListener('input', updatePostalGrid);
-            document.getElementById('deptSelect').addEventListener('change', updatePostalGrid);
-        });
-        
-        function initColorGrid() {
-            const grid = document.getElementById('colorGrid');
-            colors.forEach(color => {
-                const btn = document.createElement('div');
-                btn.className = 'color-btn';
-                btn.style.backgroundColor = color.hex;
-                btn.title = color.name;
-                btn.onclick = () => selectColor(color.hex, btn);
-                if (color.hex === selectedColor) {
-                    btn.classList.add('selected');
-                }
-                grid.appendChild(btn);
-            });
-        }
-        
-        function selectColor(hex, element) {
-            selectedColor = hex;
-            document.querySelectorAll('.color-btn').forEach(btn => btn.classList.remove('selected'));
-            element.classList.add('selected');
-        }
-        
-        function handleFileUpload(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const text = e.target.result;
-                parseCSV(text);
-            };
-            reader.readAsText(file);
-        }
-        
-        function parseCSV(text) {
-            const lines = text.split('\n');
-            postalData = [];
-            
-            for (let i = 1; i < lines.length; i++) {
-                const line = lines[i].trim();
-                if (!line) continue;
-                
-                const parts = line.split(';');
-                if (parts.length >= 2) {
-                    const commune = parts[0].trim();
-                    let cp = parts[1].trim();
-                    
-                    // Correction Excel : ajouter 0 devant si 4 chiffres
-                    if (cp.length === 4 && !isNaN(cp)) {
-                        cp = '0' + cp;
-                    }
-                    
-                    const dept = cp.substring(0, 2);
-                    if (departments[dept]) {
-                        postalData.push({ commune, cp, dept });
-                    }
-                }
-            }
-            
-            saveToStorage();
-            showMainSection();
-            updatePostalGrid();
-        }
-        
-        function showMainSection() {
-            document.getElementById('uploadSection').classList.add('hidden');
-            document.getElementById('mainSection').classList.remove('hidden');
-            document.getElementById('listSection').classList.remove('hidden');
-            updateStats();
-        }
-        
-        function updateStats() {
-            const assignedCount = Object.keys(zones).length;
-            document.getElementById('stats').textContent = 
-                `${postalData.length} communes • ${assignedCount} codes postaux colorés`;
-        }
-        
-        function updatePostalGrid() {
-            const search = document.getElementById('searchInput').value.toLowerCase();
-            const dept = document.getElementById('deptSelect').value;
-            
-            const filtered = postalData.filter(item => {
-                const matchDept = dept === 'all' || item.dept === dept;
-                const matchSearch = !search || 
-                    item.commune.toLowerCase().includes(search) || 
-                    item.cp.includes(search);
-                return matchDept && matchSearch;
-            });
-            
-            // Grouper par code postal
-            const grouped = {};
-            filtered.forEach(item => {
-                if (!grouped[item.cp]) grouped[item.cp] = [];
-                grouped[item.cp].push(item.commune);
-            });
-            
-            const grid = document.getElementById('postalGrid');
-            grid.innerHTML = '';
-            
-            document.getElementById('postalCount').textContent = Object.keys(grouped).length;
-            
-            Object.keys(grouped).sort().forEach(cp => {
-                const zone = zones[cp];
-                const communes = grouped[cp];
-                
-                const btn = document.createElement('div');
-                btn.className = 'postal-btn' + (zone ? ' assigned' : '');
-                btn.style.backgroundColor = zone ? zone.color : '#ffffff';
-                btn.style.color = (zone && zone.color !== '#FFFFFF') ? '#fff' : '#000';
-                btn.title = communes.join(', ') + '\n' + (zone ? zone.name : 'Non attribué');
-                btn.onclick = () => togglePostalCode(cp);
-                
-                btn.innerHTML = `
-                    <div class="postal-code">${cp}</div>
-                    ${zone ? `<div class="postal-zone">${zone.name}</div>` : ''}
-                `;
-                
-                grid.appendChild(btn);
-            });
-        }
-        
-        function togglePostalCode(cp) {
-            const zoneName = document.getElementById('zoneName').value || 'Zone sans nom';
-            
-            if (zones[cp] && zones[cp].color === selectedColor) {
-                delete zones[cp];
-            } else {
-                zones[cp] = { color: selectedColor, name: zoneName };
-            }
-            
-            saveToStorage();
-            updatePostalGrid();
-            updateStats();
-            if (map) updateMapMarkers();
-        }
-        
-        function toggleView() {
-            if (currentView === 'list') {
-                currentView = 'map';
-                document.getElementById('listSection').classList.add('hidden');
-                document.getElementById('mapSection').classList.remove('hidden');
-                if (!map) initMap();
-            } else {
-                currentView = 'list';
-                document.getElementById('mapSection').classList.add('hidden');
-                document.getElementById('listSection').classList.remove('hidden');
-            }
-        }
-        
-        function initMap() {
-            map = L.map('map').setView([49.5, 1.5], 8);
-            
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap contributors',
-                maxZoom: 19
-            }).addTo(map);
-            
-            updateMapMarkers();
-        }
-        
-        function updateMapMarkers() {
-            if (!map) return;
-            
-            // Supprimer anciens marqueurs
-            Object.values(markers).forEach(marker => map.removeLayer(marker));
-            markers = {};
-            
-            // Grouper par code postal
-            const grouped = {};
-            postalData.forEach(item => {
-                if (!grouped[item.cp]) grouped[item.cp] = [];
-                grouped[item.cp].push(item.commune);
-            });
-            
-            Object.entries(grouped).forEach(([cp, communes]) => {
-                const coords = postalCoords[cp];
-                if (!coords) return;
-                
-                const zone = zones[cp];
-                const color = zone ? zone.color : '#95a5a6';
-                
-                const marker = L.circleMarker([coords[0], coords[1]], {
-                    radius: 8,
-                    fillColor: color,
-                    color: '#000',
-                    weight: 2,
-                    opacity: 1,
-                    fillOpacity: 0.8
-                }).addTo(map);
-                
-                marker.bindPopup(`
-                    <div style="text-align: center;">
-                        <strong style="font-size: 16px;">${cp}</strong><br/>
-                        <span style="font-size: 12px; color: #666;">${communes.length} commune(s)</span><br/>
-                        ${zone ? `<span style="color: ${color}; font-weight: bold;">${zone.name}</span>` : '<span style="color: #999;">Non attribué</span>'}
-                    </div>
-                `);
-                
-                marker.on('click', () => togglePostalCode(cp));
-                markers[cp] = marker;
-            });
-        }
-        
-        function exportData() {
-            const colorGroups = {};
-            
-            Object.entries(zones).forEach(([cp, data]) => {
-                if (!colorGroups[data.color]) {
-                    colorGroups[data.color] = { name: data.name, postalCodes: [] };
-                }
-                colorGroups[data.color].postalCodes.push(cp);
-            });
-            
-            let text = 'EXPORT DES ZONES DE PERMANENCE\n================================\n\n';
-            
-            Object.entries(colorGroups).forEach(([color, data]) => {
-                const colorName = colors.find(c => c.hex === color)?.name || 'Couleur personnalisée';
-                text += `${data.name} (${colorName})\n`;
-                text += `Codes postaux (${data.postalCodes.length}): ${data.postalCodes.sort().join(', ')}\n\n`;
-            });
-            
-            const blob = new Blob([text], { type: 'text/plain' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'zones-permanence.txt';
-            a.click();
-        }
-        
-        function clearAll() {
-            if (confirm('Effacer toutes les zones colorées ?')) {
-                zones = {};
-                saveToStorage();
-                updatePostalGrid();
-                updateStats();
-                if (map) updateMapMarkers();
-            }
-        }
-        
-        function reloadCSV() {
-            postalData = [];
-            zones = {};
-            localStorage.clear();
-            document.getElementById('uploadSection').classList.remove('hidden');
-            document.getElementById('mainSection').classList.add('hidden');
-            document.getElementById('listSection').classList.add('hidden');
-            document.getElementById('mapSection').classList.add('hidden');
-            document.getElementById('fileInput').value = '';
-        }
-        
-        function saveToStorage() {
-            localStorage.setItem('postalData', JSON.stringify(postalData));
-            localStorage.setItem('zones', JSON.stringify(zones));
-        }
-        
-        function loadFromStorage() {
-            const savedData = localStorage.getItem('postalData');
-            const savedZones = localStorage.getItem('zones');
-            
-            if (savedData) {
-                postalData = JSON.parse(savedData);
-                showMainSection();
-                updatePostalGrid();
-            }
-            
-            if (savedZones) {
-                zones = JSON.parse(savedZones);
-                updatePostalGrid();
-                updateStats();
-            }
-        }
+var postalData=[];var zones={};var selectedColor="#FF6B6B";var currentView="list";var map=null;var markers={};var colors=[{name:"Rouge",hex:"#FF6B6B"},{name:"Orange",hex:"#FFA07A"},{name:"Jaune",hex:"#FFD93D"},{name:"Vert clair",hex:"#6BCF7F"},{name:"Vert",hex:"#2ECC71"},{name:"Turquoise",hex:"#4ECDC4"},{name:"Bleu clair",hex:"#74B9FF"},{name:"Bleu",hex:"#3498DB"},{name:"Violet",hex:"#A29BFE"},{name:"Rose",hex:"#FD79A8"},{name:"Magenta",hex:"#E056FD"},{name:"Marron",hex:"#B8860B"},{name:"Gris",hex:"#95A5A6"},{name:"Noir",hex:"#2C3E50"},{name:"Blanc",hex:"#FFFFFF"}];var departments={"02":"Aisne","59":"Nord","60":"Oise","62":"Pas-de-Calais","80":"Somme","14":"Calvados","27":"Eure","50":"Manche","61":"Orne","76":"Seine-Maritime"};var postalCoords={"02000":[49.5637,3.6244],"02100":[49.8472,3.2864],"59000":[50.6292,3.0573],"59100":[50.6311,3.0708],"59200":[50.6942,3.1746],"62000":[50.2914,2.7767],"62100":[50.9511,1.8589],"80000":[49.8942,2.2958],"14000":[49.1829,-0.3707],"27000":[49.0244,1.1508],"50000":[49.1167,-1.0833],"61000":[48.4333,0.0833],"76000":[49.4431,1.0993]};document.addEventListener("DOMContentLoaded",function(){loadFromStorage();initColorGrid();document.getElementById("fileInput").addEventListener("change",handleFileUpload);document.getElementById("searchInput").addEventListener("input",updatePostalGrid);document.getElementById("deptSelect").addEventListener("change",updatePostalGrid)});function initColorGrid(){var grid=document.getElementById("colorGrid");colors.forEach(function(color){var btn=document.createElement("div");btn.className="color-btn";btn.style.backgroundColor=color.hex;btn.title=color.name;btn.onclick=function(){selectColor(color.hex,btn)};if(color.hex===selectedColor){btn.classList.add("selected")}grid.appendChild(btn)})}function selectColor(hex,element){selectedColor=hex;document.querySelectorAll(".color-btn").forEach(function(btn){return btn.classList.remove("selected")});element.classList.add("selected")}function handleFileUpload(event){var file=event.target.files[0];if(!file)return;var reader=new FileReader;reader.onload=function(e){var text=e.target.result;parseCSV(text)};reader.readAsText(file)}function parseCSV(text){var lines=text.split("\n");postalData=[];for(var i=1;i<lines.length;i++){var line=lines[i].trim();if(!line)continue;var parts=line.split(";");if(parts.length>=2){var commune=parts[0].trim();var cp=parts[1].trim();if(cp.length===4&&!isNaN(cp)){cp="0"+cp}var dept=cp.substring(0,2);if(departments[dept]){postalData.push({commune:commune,cp:cp,dept:dept})}}}saveToStorage();showMainSection();updatePostalGrid()}function showMainSection(){document.getElementById("uploadSection").classList.add("hidden");document.getElementById("mainSection").classList.remove("hidden");document.getElementById("listSection").classList.remove("hidden");updateStats()}function updateStats(){var assignedCount=Object.keys(zones).length;document.getElementById("stats").textContent=postalData.length+" communes • "+assignedCount+" codes postaux colorés"}function updatePostalGrid(){var search=document.getElementById("searchInput").value.toLowerCase();var dept=document.getElementById("deptSelect").value;var filtered=postalData.filter(function(item){var matchDept=dept==="all"||item.dept===dept;var matchSearch=!search||item.commune.toLowerCase().includes(search)||item.cp.includes(search);return matchDept&&matchSearch});var grouped={};filtered.forEach(function(item){if(!grouped[item.cp])grouped[item.cp]=[];grouped[item.cp].push(item.commune)});var grid=document.getElementById("postalGrid");grid.innerHTML="";document.getElementById("postalCount").textContent=Object.keys(grouped).length;Object.keys(grouped).sort().forEach(function(cp){var zone=zones[cp];var communes=grouped[cp];var btn=document.createElement("div");btn.className="postal-btn"+(zone?" assigned":"");btn.style.backgroundColor=zone?zone.color:"#ffffff";btn.style.color=zone&&zone.color!=="#FFFFFF"?"#fff":"#000";btn.title=communes.join(", ")+"\n"+(zone?zone.name:"Non attribué");btn.onclick=function(){return togglePostalCode(cp)};btn.innerHTML='<div class="postal-code">'+cp+"</div>"+(zone?'<div class="postal-zone">'+zone.name+"</div>":"");grid.appendChild(btn)})}function togglePostalCode(cp){var zoneName=document.getElementById("zoneName").value||"Zone sans nom";if(zones[cp]&&zones[cp].color===selectedColor){delete zones[cp]}else{zones[cp]={color:selectedColor,name:zoneName}}saveToStorage();updatePostalGrid();updateStats();if(map)updateMapMarkers()}function toggleView(){if(currentView==="list"){currentView="map";document.getElementById("listSection").classList.add("hidden");document.getElementById("mapSection").classList.remove("hidden");if(!map)initMap()}else{currentView="list";document.getElementById("mapSection").classList.add("hidden");document.getElementById("listSection").classList.remove("hidden")}}function initMap(){map=L.map("map").setView([49.5,1.5],8);L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{attribution:"© OpenStreetMap",maxZoom:19}).addTo(map);updateMapMarkers()}function updateMapMarkers(){if(!map)return;Object.values(markers).forEach(function(marker){return map.removeLayer(marker)});markers={};var grouped={};postalData.forEach(function(item){if(!grouped[item.cp])grouped[item.cp]=[];grouped[item.cp].push(item.commune)});Object.entries(grouped).forEach(function(a){var cp=a[0];var communes=a[1];var coords=postalCoords[cp];if(!coords)return;var zone=zones[cp];var color=zone?zone.color:"#95a5a6";var marker=L.circleMarker([coords[0],coords[1]],{radius:8,fillColor:color,color:"#000",weight:2,opacity:1,fillOpacity:.8}).addTo(map);marker.bindPopup('<div style="text-align:center;"><strong style="font-size:16px;">'+cp+'</strong><br/><span style="font-size:12px;color:#666;">'+communes.length+' commune(s)</span><br/>'+(zone?'<span style="color:'+color+';font-weight:bold;">'+zone.name+"</span>":'<span style="color:#999;">Non attribué</span>')+"</div>");marker.on("click",function(){return togglePostalCode(cp)});markers[cp]=marker})}function exportData(){var colorGroups={};Object.entries(zones).forEach(function(a){var cp=a[0];var data=a[1];if(!colorGroups[data.color]){colorGroups[data.color]={name:data.name,postalCodes:[]}}colorGroups[data.color].postalCodes.push(cp)});var text="EXPORT DES ZONES DE PERMANENCE\n================================\n\n";Object.entries(colorGroups).forEach(function(a){var color=a[0];var data=a[1];var colorName=colors.find(function(c){return c.hex===color});text+=data.name+" ("+(colorName?colorName.name:"Couleur personnalisée")+")\n";text+="Codes postaux ("+data.postalCodes.length+"): "+data.postalCodes.sort().join(", ")+"\n\n"});var blob=new Blob([text],{type:"text/plain"});var url=URL.createObjectURL(blob);var a=document.createElement("a");a.href=url;a.download="zones-permanence.txt";a.click()}function clearAll(){if(confirm("Effacer toutes les zones colorées ?")){zones={};saveToStorage();updatePostalGrid();updateStats();if(map)updateMapMarkers()}}function reloadCSV(){postalData=[];zones={};localStorage.clear();document.getElementById("uploadSection").classList.remove("hidden");document.getElementById("mainSection").classList.add("hidden");document.getElementById("listSection").classList.add("hidden");document.getElementById("mapSection").classList.add("hidden");document.getElementById("fileInput").value=""}function saveToStorage(){localStorage.setItem("postalData",JSON.stringify(postalData));localStorage.setItem("zones",JSON.stringify(zones))}function loadFromStorage(){var savedData=localStorage.getItem("postalData");var savedZones=localStorage.getItem("zones");if(savedData){postalData=JSON.parse(savedData);showMainSection();updatePostalGrid()}if(savedZones){zones=JSON.parse(savedZones);updatePostalGrid();updateStats()}}
     </script>
 </body>
 </html>
