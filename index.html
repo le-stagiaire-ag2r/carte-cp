@@ -48,43 +48,43 @@
 <body>
     <div class="container">
         <div class="card">
-            <h1>🗺️ Carte des Zones de Permanence</h1>
+            <h1>Carte des Zones de Permanence</h1>
             <p class="subtitle">Hauts-de-France & Normandie</p>
             
             <div id="uploadSection" class="upload-box">
-                <h2 style="margin-bottom: 16px;">📁 Charger le fichier CSV</h2>
+                <h2 style="margin-bottom: 16px;">Charger le fichier CSV</h2>
                 <p style="margin-bottom: 12px; color: #6b7280;">Le fichier sera automatiquement sauvegardé dans votre navigateur</p>
-                <p style="margin-bottom: 16px; font-size: 13px; color: #059669;">✅ Vous n'aurez à le charger qu'une seule fois !</p>
+                <p style="margin-bottom: 16px; font-size: 13px; color: #059669;">Vous n'aurez à le charger qu'une seule fois</p>
                 <input type="file" id="fileInput" accept=".csv">
             </div>
             
             <div id="mainSection" class="hidden">
                 <div class="btn-group">
-                    <button class="btn-green" id="toggleViewBtn" onclick="toggleView()">🗺️ Vue Carte / Liste</button>
-                    <button class="btn-blue" onclick="exportData()">⬇️ Exporter</button>
-                    <button class="btn-purple" onclick="reloadCSV()">📁 Recharger CSV</button>
-                    <button class="btn-red" onclick="clearAll()">🗑️ Effacer tout</button>
+                    <button class="btn-green" id="toggleViewBtn" onclick="toggleView()">Vue Carte / Liste</button>
+                    <button class="btn-blue" onclick="exportData()">Exporter</button>
+                    <button class="btn-purple" onclick="reloadCSV()">Recharger CSV</button>
+                    <button class="btn-red" onclick="clearAll()">Effacer tout</button>
                     <div class="stats" id="stats"></div>
                 </div>
                 
                 <div class="grid-2">
                     <div>
-                        <label>🎨 Couleur sélectionnée</label>
+                        <label>Couleur sélectionnée</label>
                         <div class="color-grid" id="colorGrid"></div>
                     </div>
                     <div>
-                        <label>🏷️ Nom de la zone</label>
+                        <label>Nom de la zone</label>
                         <input type="text" id="zoneName" placeholder="Ex: Zone de Sarah">
                     </div>
                 </div>
                 
                 <div class="grid-2">
                     <div>
-                        <label>🔍 Rechercher</label>
+                        <label>Rechercher</label>
                         <input type="text" id="searchInput" placeholder="Commune ou code postal...">
                     </div>
                     <div>
-                        <label>📍 Département</label>
+                        <label>Département</label>
                         <select id="deptSelect">
                             <option value="all">Tous les départements</option>
                             <option value="02">02 - Aisne</option>
@@ -106,15 +106,14 @@
         <div id="mapSection" class="card hidden">
             <h2 style="margin-bottom: 16px;">Carte choroplèthe interactive</h2>
             <div class="info-box">
-                <strong>🗺️ Carte optimisée :</strong> Les communes sont colorées selon leur code postal. 
-                Cliquez sur une commune pour l'attribuer à une zone.<br>
-                <small style="color: #dc2626;">⚠️ Note : L'Aisne (02) n'est pas affichée sur la carte pour éviter les problèmes de performance, mais tous les codes postaux de l'Aisne restent disponibles dans la liste.</small>
+                <strong>Carte interactive :</strong> Les communes sont colorées selon leur code postal. 
+                Cliquez sur une commune pour l'attribuer à une zone. Tous les départements sont affichés.
             </div>
             
             <div id="loadingSection" class="hidden">
                 <div class="warning-box">
-                    <strong>⏳ Chargement des contours...</strong><br>
-                    Chargement par département. Cela prendra environ 10-15 secondes.
+                    <strong>Chargement des contours...</strong><br>
+                    Chargement de tous les départements. Cela prendra environ 15-20 secondes.
                 </div>
                 <div class="progress-bar">
                     <div class="progress-fill" id="progressFill" style="width: 0%;">0%</div>
@@ -123,7 +122,7 @@
             </div>
             
             <div id="successSection" class="success-box hidden">
-                <strong>✅ Carte chargée avec succès !</strong>
+                <strong>Carte chargée avec succès</strong>
             </div>
             
             <div id="map"></div>
@@ -161,12 +160,6 @@
             "02":"Aisne","59":"Nord","60":"Oise","62":"Pas-de-Calais","80":"Somme",
             "14":"Calvados","27":"Eure","50":"Manche","61":"Orne","76":"Seine-Maritime"
         };
-        
-        // Département Aisne (02) désactivé car trop lourd pour la carte
-        var departmentsAll = {
-            "02":"Aisne","59":"Nord","60":"Oise","62":"Pas-de-Calais","80":"Somme",
-            "14":"Calvados","27":"Eure","50":"Manche","61":"Orne","76":"Seine-Maritime"
-        };
 
         document.addEventListener("DOMContentLoaded", function() {
             loadFromStorage();
@@ -174,12 +167,6 @@
             document.getElementById("fileInput").addEventListener("change", handleFileUpload);
             document.getElementById("searchInput").addEventListener("input", updatePostalGrid);
             document.getElementById("deptSelect").addEventListener("change", updatePostalGrid);
-            
-            // Si des données sont déjà en mémoire, afficher l'interface
-            if (postalData.length > 0) {
-                showMainSection();
-                updatePostalGrid();
-            }
         });
 
         function initColorGrid() {
@@ -226,13 +213,13 @@
                     var commune = parts[0].trim();
                     var cp = parts[1].trim();
                     
-                    // Gérer les codes postaux à 4 chiffres
+                    // Gérer les codes postaux à 4 chiffres (Aisne 02)
                     if (cp.length === 4 && !isNaN(cp)) {
                         cp = "0" + cp;
                     }
                     
                     var dept = cp.substring(0, 2);
-                    if (departmentsAll[dept]) {
+                    if (departments[dept]) {
                         postalData.push({commune: commune, cp: cp, dept: dept});
                     }
                 }
@@ -337,13 +324,10 @@
             document.getElementById("successSection").classList.add("hidden");
             document.getElementById("toggleViewBtn").disabled = true;
 
-            // Exclure l'Aisne (02) de la carte pour éviter les crashs
-            var depts = Object.keys(departments).filter(d => d !== "02");
+            var depts = Object.keys(departments);
             var total = depts.length;
             var loaded = 0;
             var allFeatures = [];
-            
-            document.getElementById("loadingText").textContent = "Note : L'Aisne (02) n'est pas affichée sur la carte pour des raisons de performance, mais reste disponible dans la liste des codes postaux.";
 
             for (var i = 0; i < depts.length; i++) {
                 var dept = depts[i];
@@ -357,28 +341,20 @@
                             data.features.forEach(function(feature) {
                                 var communeName = feature.properties.nom;
                                 var apiCodesPostaux = feature.properties.codesPostaux || [];
+                                
                                 var matchingItems = postalData.filter(function(d) {
                                     return d.commune.toLowerCase() === communeName.toLowerCase() || apiCodesPostaux.includes(d.cp);
                                 });
                                 
                                 if (matchingItems.length > 0) {
                                     matchingItems.forEach(function(item) {
-                                        // Simplification modérée
-                                        var maxPoints = 15;
+                                        var featureCopy = JSON.parse(JSON.stringify(feature));
+                                        featureCopy.properties.codePostal = item.cp;
+                                        featureCopy.properties.matchedCommune = item.commune;
                                         
-                                        if (feature.geometry && feature.geometry.coordinates) {
-                                            feature.geometry.coordinates = simplifyGeometry(feature.geometry.coordinates, 0.001, maxPoints);
+                                        if (featureCopy.geometry && featureCopy.geometry.coordinates) {
+                                            featureCopy.geometry.coordinates = simplifyCoordinates(featureCopy.geometry.coordinates, 0.001);
                                         }
-                                        
-                                        var featureCopy = {
-                                            type: feature.type,
-                                            geometry: feature.geometry,
-                                            properties: {
-                                                codePostal: item.cp,
-                                                matchedCommune: item.commune,
-                                                nom: feature.properties.nom
-                                            }
-                                        };
                                         
                                         allFeatures.push(featureCopy);
                                     });
@@ -401,13 +377,38 @@
             geoDataCache = allFeatures;
             document.getElementById("loadingSection").classList.add("hidden");
             document.getElementById("successSection").classList.remove("hidden");
-            document.getElementById("successSection").innerHTML = "<strong>✅ Carte chargée avec succès !</strong><br><small>L'Aisne (02) n'est pas affichée sur la carte mais reste disponible dans la liste.</small>";
             setTimeout(function() {
                 document.getElementById("successSection").classList.add("hidden");
-            }, 8000);
+            }, 5000);
             document.getElementById("toggleViewBtn").disabled = false;
             isLoadingGeo = false;
             displayGeoData();
+        }
+
+        function simplifyCoordinates(coords, tolerance) {
+            if (!coords || coords.length === 0) return coords;
+            
+            if (typeof coords[0] === 'number') {
+                return coords;
+            }
+            
+            if (Array.isArray(coords[0]) && typeof coords[0][0] === 'number') {
+                if (coords.length <= 15) return coords;
+                
+                var simplified = [coords[0]];
+                var step = Math.max(2, Math.floor(coords.length / 40));
+                
+                for (var i = step; i < coords.length - 1; i += step) {
+                    simplified.push(coords[i]);
+                }
+                
+                simplified.push(coords[coords.length - 1]);
+                return simplified;
+            }
+            
+            return coords.map(function(c) {
+                return simplifyCoordinates(c, tolerance);
+            });
         }
 
         function displayGeoData() {
@@ -417,6 +418,7 @@
             geoDataCache.forEach(function(feature) {
                 var cp = feature.properties.codePostal;
                 if (!cp) return;
+                
                 var zone = zones[cp];
                 var color = zone ? zone.color : "#e5e7eb";
                 
@@ -432,41 +434,6 @@
                     }
                 });
                 geoLayerGroup.addLayer(layer);
-            });
-        }
-
-        // Fonction pour simplifier drastiquement la géométrie
-        function simplifyGeometry(coords, tolerance, maxPoints) {
-            if (!coords || coords.length === 0) return coords;
-            
-            maxPoints = maxPoints || 15; // Par défaut 15 points (réduit de 20)
-            
-            // Si c'est un point [lon, lat]
-            if (typeof coords[0] === 'number') {
-                return coords;
-            }
-            
-            // Si c'est un tableau de points [[lon,lat], [lon,lat], ...]
-            if (Array.isArray(coords[0]) && typeof coords[0][0] === 'number') {
-                // Ne garder qu'un point sur X pour réduire drastiquement la mémoire
-                if (coords.length <= maxPoints) return coords;
-                
-                var simplified = [coords[0]]; // Toujours garder le premier point
-                var step = Math.max(2, Math.floor(coords.length / maxPoints)); // Minimum step de 2
-                
-                for (var i = step; i < coords.length - 1; i += step) {
-                    simplified.push(coords[i]);
-                }
-                
-                // Toujours garder le dernier point pour fermer le polygone
-                simplified.push(coords[coords.length - 1]);
-                
-                return simplified;
-            }
-            
-            // Si c'est un tableau de tableaux (MultiPolygon ou Polygon avec trous)
-            return coords.map(function(c) {
-                return simplifyGeometry(c, tolerance, maxPoints);
             });
         }
 
@@ -538,9 +505,13 @@
             
             if (savedData) {
                 postalData = JSON.parse(savedData);
+                showMainSection();
+                updatePostalGrid();
             }
             if (savedZones) {
                 zones = JSON.parse(savedZones);
+                updatePostalGrid();
+                updateStats();
             }
         }
     </script>
