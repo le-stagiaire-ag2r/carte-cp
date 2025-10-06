@@ -327,12 +327,14 @@
         function initMap() {
             map = L.map("map", {
                 preferCanvas: false,
-                renderer: L.svg()
+                renderer: L.svg({ padding: 0.5 })
             }).setView([49.5, 1.5], 8);
             
             L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
                 attribution: "© OpenStreetMap",
-                maxZoom: 19
+                maxZoom: 19,
+                updateWhenIdle: true,
+                updateWhenZooming: false
             }).addTo(map);
             geoLayerGroup = L.layerGroup().addTo(map);
             loadGeoData();
@@ -348,46 +350,51 @@
             var depts = Object.keys(departments);
             var total = depts.length;
             var loaded = 0;
-            var cpToFeatures = {};
+            var cpToGeometry = {};
 
             for (var i = 0; i < depts.length; i++) {
                 var dept = depts[i];
-                document.getElementById("loadingText").textContent = "Chargement du département " + dept + " (" + departments[dept] + ")...";
+                document.getElementById("loadingText").textContent = "Chargement " + dept + "...";
                 
                 try {
-                    var response = await fetch("https://geo.api.gouv.fr/departements/" + dept + "/communes?fields=nom,code,codesPostaux&format=geojson&geometry=contour");
+                    var response = await fetch("https://geo.api.gouv.fr/departements/" + dept + "/communes?fields=nom,codesPostaux&format=geojson&geometry=contour");
                     if (response.ok) {
                         var data = await response.json();
                         if (data.features) {
                             for (var j = 0; j < data.features.length; j++) {
                                 var feature = data.features[j];
                                 var communeName = feature.properties.nom;
-                                var apiCodesPostaux = feature.properties.codesPostaux || [];
+                                var apiCps = feature.properties.codesPostaux || [];
                                 
-                                for (var k = 0; k < postalData.length; k++) {
-                                    var d = postalData[k];
-                                    if (d.commune.toLowerCase() === communeName.toLowerCase() || apiCodesPostaux.indexOf(d.cp) !== -1) {
-                                        if (!cpToFeatures[d.cp]) {
-                                            cpToFeatures[d.cp] = {
-                                                cp: d.cp,
-                                                commune: d.commune,
+                                for (var k = 0; k < apiCps.length; k++) {
+                                    var cp = apiCps[k];
+                                    if (cp.substring(0, 2) === dept) {
+                                        if (!cpToGeometry[cp]) {
+                                            cpToGeometry[cp] = {
+                                                communes: [],
                                                 geometries: []
                                             };
                                         }
                                         
+                                        if (cpToGeometry[cp].communes.indexOf(communeName) === -1) {
+                                            cpToGeometry[cp].communes.push(communeName);
+                                        }
+                                        
                                         if (feature.geometry && feature.geometry.coordinates) {
-                                            cpToFeatures[d.cp].geometries.push({
+                                            cpToGeometry[cp].geometries.push({
                                                 type: feature.geometry.type,
-                                                coordinates: simplifyCoordinates(feature.geometry.coordinates, 0.003)
+                                                coords: simplifyCoordinates(feature.geometry.coordinates, 0.004),
+                                                commune: communeName
                                             });
                                         }
+                                        break;
                                     }
                                 }
                             }
                         }
                     }
                 } catch (error) {
-                    console.log("Erreur département " + dept);
+                    console.log("Erreur " + dept);
                 }
                 
                 loaded++;
@@ -395,10 +402,10 @@
                 document.getElementById("progressFill").style.width = percent + "%";
                 document.getElementById("progressFill").textContent = percent + "%";
                 
-                await new Promise(function(resolve) { setTimeout(resolve, 30); });
+                await new Promise(function(resolve) { setTimeout(resolve, 20); });
             }
 
-            geoDataCache = cpToFeatures;
+            geoDataCache = cpToGeometry;
             document.getElementById("loadingSection").classList.add("hidden");
             document.getElementById("successSection").classList.remove("hidden");
             setTimeout(function() {
@@ -417,10 +424,10 @@
             }
             
             if (Array.isArray(coords[0]) && typeof coords[0][0] === 'number') {
-                if (coords.length <= 6) return coords;
+                if (coords.length <= 4) return coords;
                 
                 var simplified = [coords[0]];
-                var step = Math.max(5, Math.floor(coords.length / 5));
+                var step = Math.max(8, Math.floor(coords.length / 3));
                 
                 for (var i = step; i < coords.length - 1; i += step) {
                     simplified.push(coords[i]);
@@ -442,15 +449,15 @@
             geoLayerGroup.clearLayers();
             
             var cps = Object.keys(geoDataCache);
-            var batchSize = 20;
+            var batchSize = 15;
             var index = 0;
             
             function displayBatch() {
                 var end = Math.min(index + batchSize, cps.length);
                 
                 for (var i = index; i < end; i++) {
-                    var cpData = geoDataCache[cps[i]];
-                    var cp = cpData.cp;
+                    var cp = cps[i];
+                    var cpData = geoDataCache[cp];
                     var zone = zones[cp];
                     var color = zone ? zone.color : "#e5e7eb";
                     
@@ -458,13 +465,13 @@
                         var geom = cpData.geometries[j];
                         var feature = {
                             type: "Feature",
-                            properties: {
-                                codePostal: cp,
-                                commune: cpData.commune
+                            properties: { 
+                                cp: cp,
+                                commune: geom.commune
                             },
                             geometry: {
                                 type: geom.type,
-                                coordinates: geom.coordinates
+                                coordinates: geom.coords
                             }
                         };
                         
@@ -475,18 +482,17 @@
                                 color: "#666",
                                 weight: 1
                             },
-                            onEachFeature: (function(cpClosure, zoneClosure, colorClosure) {
+                            onEachFeature: (function(cpClosure, communeClosure, zoneClosure, colorClosure) {
                                 return function(f, l) {
                                     l.on("click", function() {
                                         togglePostalCode(cpClosure);
                                     });
-                                    var name = f.properties.commune || "";
-                                    l.bindTooltip("<strong>" + name + "</strong><br/>CP: " + cpClosure + 
+                                    l.bindTooltip("<strong>" + communeClosure + "</strong><br/>CP: " + cpClosure + 
                                         (zoneClosure ? "<br/><span style='color:" + colorClosure + ";font-weight:bold;'>" + zoneClosure.name + "</span>" : ""),
                                         {sticky: true}
                                     );
                                 };
-                            })(cp, zone, color)
+                            })(cp, geom.commune, zone, color)
                         });
                         geoLayerGroup.addLayer(layer);
                     }
