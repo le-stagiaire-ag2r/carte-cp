@@ -160,6 +160,12 @@
             "02":"Aisne","59":"Nord","60":"Oise","62":"Pas-de-Calais","80":"Somme",
             "14":"Calvados","27":"Eure","50":"Manche","61":"Orne","76":"Seine-Maritime"
         };
+        
+        // Département Aisne (02) désactivé car trop lourd pour la carte
+        var departmentsAll = {
+            "02":"Aisne","59":"Nord","60":"Oise","62":"Pas-de-Calais","80":"Somme",
+            "14":"Calvados","27":"Eure","50":"Manche","61":"Orne","76":"Seine-Maritime"
+        };
 
         document.addEventListener("DOMContentLoaded", function() {
             loadFromStorage();
@@ -225,7 +231,7 @@
                     }
                     
                     var dept = cp.substring(0, 2);
-                    if (departments[dept]) {
+                    if (departmentsAll[dept]) {
                         postalData.push({commune: commune, cp: cp, dept: dept});
                     }
                 }
@@ -356,6 +362,14 @@
                                         var featureCopy = JSON.parse(JSON.stringify(feature));
                                         featureCopy.properties.codePostal = item.cp;
                                         featureCopy.properties.matchedCommune = item.commune;
+                                        
+                                        // Pour l'Aisne (02), simplification ULTRA agressive (max 10 points)
+                                        // Pour les autres départements, simplification normale (max 20 points)
+                                        var maxPoints = (dept === "02") ? 10 : 20;
+                                        if (featureCopy.geometry && featureCopy.geometry.coordinates) {
+                                            featureCopy.geometry.coordinates = simplifyGeometry(featureCopy.geometry.coordinates, 0.001, maxPoints);
+                                        }
+                                        
                                         allFeatures.push(featureCopy);
                                     });
                                 }
@@ -405,6 +419,43 @@
                     }
                 });
                 geoLayerGroup.addLayer(layer);
+            });
+        }
+
+        // Fonction pour simplifier drastiquement la géométrie
+        function simplifyGeometry(coords, tolerance, maxPoints) {
+            if (!coords || coords.length === 0) return coords;
+            
+            maxPoints = maxPoints || 20; // Par défaut 20 points
+            
+            // Si c'est un point [lon, lat]
+            if (typeof coords[0] === 'number') {
+                return coords;
+            }
+            
+            // Si c'est un tableau de points [[lon,lat], [lon,lat], ...]
+            if (Array.isArray(coords[0]) && typeof coords[0][0] === 'number') {
+                // Ne garder qu'un point sur X pour réduire drastiquement la mémoire
+                if (coords.length <= maxPoints) return coords;
+                
+                var simplified = [];
+                var step = Math.max(1, Math.floor(coords.length / maxPoints));
+                
+                for (var i = 0; i < coords.length; i += step) {
+                    simplified.push(coords[i]);
+                }
+                
+                // S'assurer que le polygone est fermé
+                if (simplified.length > 0 && simplified[simplified.length - 1] !== coords[coords.length - 1]) {
+                    simplified.push(coords[coords.length - 1]);
+                }
+                
+                return simplified;
+            }
+            
+            // Si c'est un tableau de tableaux (MultiPolygon ou Polygon avec trous)
+            return coords.map(function(c) {
+                return simplifyGeometry(c, tolerance, maxPoints);
             });
         }
 
