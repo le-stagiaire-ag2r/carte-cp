@@ -48,12 +48,13 @@
 <body>
     <div class="container">
         <div class="card">
-            <h1>Carte des Zones de Permanence</h1>
-            <p class="subtitle">Hauts-de-France & Normandie - Carte choroplèthe optimisée</p>
+            <h1>🗺️ Carte des Zones de Permanence</h1>
+            <p class="subtitle">Hauts-de-France & Normandie</p>
             
             <div id="uploadSection" class="upload-box">
                 <h2 style="margin-bottom: 16px;">📁 Charger le fichier CSV</h2>
-                <p style="margin-bottom: 16px;">Pour commencer, veuillez charger votre fichier CSV</p>
+                <p style="margin-bottom: 12px; color: #6b7280;">Le fichier sera automatiquement sauvegardé dans votre navigateur</p>
+                <p style="margin-bottom: 16px; font-size: 13px; color: #059669;">✅ Vous n'aurez à le charger qu'une seule fois !</p>
                 <input type="file" id="fileInput" accept=".csv">
             </div>
             
@@ -106,13 +107,14 @@
             <h2 style="margin-bottom: 16px;">Carte choroplèthe interactive</h2>
             <div class="info-box">
                 <strong>🗺️ Carte optimisée :</strong> Les communes sont colorées selon leur code postal. 
-                Cliquez sur une commune pour l'attribuer à une zone. Chargement par département pour plus de rapidité.
+                Cliquez sur une commune pour l'attribuer à une zone.<br>
+                <small style="color: #dc2626;">⚠️ Note : L'Aisne (02) n'est pas affichée sur la carte pour éviter les problèmes de performance, mais tous les codes postaux de l'Aisne restent disponibles dans la liste.</small>
             </div>
             
             <div id="loadingSection" class="hidden">
                 <div class="warning-box">
-                    <strong>⏳ Chargement optimisé des contours...</strong><br>
-                    Chargement par département (10x plus rapide). Cela prendra environ 10-15 secondes.
+                    <strong>⏳ Chargement des contours...</strong><br>
+                    Chargement par département. Cela prendra environ 10-15 secondes.
                 </div>
                 <div class="progress-bar">
                     <div class="progress-fill" id="progressFill" style="width: 0%;">0%</div>
@@ -121,7 +123,7 @@
             </div>
             
             <div id="successSection" class="success-box hidden">
-                <strong>✅ Carte chargée avec succès !</strong> Les contours sont maintenant en cache. Les prochains chargements seront instantanés.
+                <strong>✅ Carte chargée avec succès !</strong>
             </div>
             
             <div id="map"></div>
@@ -138,7 +140,409 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-var postalData=[];var zones={};var selectedColor="#FF6B6B";var currentView="list";var map=null;var geoLayerGroup=null;var geoDataCache=null;var isLoadingGeo=false;var colors=[{name:"Rouge",hex:"#FF6B6B"},{name:"Orange",hex:"#FFA07A"},{name:"Jaune",hex:"#FFD93D"},{name:"Vert clair",hex:"#6BCF7F"},{name:"Vert",hex:"#2ECC71"},{name:"Turquoise",hex:"#4ECDC4"},{name:"Bleu clair",hex:"#74B9FF"},{name:"Bleu",hex:"#3498DB"},{name:"Violet",hex:"#A29BFE"},{name:"Rose",hex:"#FD79A8"},{name:"Magenta",hex:"#E056FD"},{name:"Marron",hex:"#B8860B"},{name:"Gris",hex:"#95A5A6"},{name:"Noir",hex:"#2C3E50"},{name:"Blanc",hex:"#FFFFFF"}];var departments={"02":"Aisne","59":"Nord","60":"Oise","62":"Pas-de-Calais","80":"Somme","14":"Calvados","27":"Eure","50":"Manche","61":"Orne","76":"Seine-Maritime"};document.addEventListener("DOMContentLoaded",function(){loadFromStorage();initColorGrid();document.getElementById("fileInput").addEventListener("change",handleFileUpload);document.getElementById("searchInput").addEventListener("input",updatePostalGrid);document.getElementById("deptSelect").addEventListener("change",updatePostalGrid)});function initColorGrid(){var grid=document.getElementById("colorGrid");colors.forEach(function(color){var btn=document.createElement("div");btn.className="color-btn";btn.style.backgroundColor=color.hex;btn.title=color.name;btn.onclick=function(){selectColor(color.hex,btn)};if(color.hex===selectedColor){btn.classList.add("selected")}grid.appendChild(btn)})}function selectColor(hex,element){selectedColor=hex;document.querySelectorAll(".color-btn").forEach(function(btn){return btn.classList.remove("selected")});element.classList.add("selected")}function handleFileUpload(event){var file=event.target.files[0];if(!file)return;var reader=new FileReader;reader.onload=function(e){var text=e.target.result;parseCSV(text)};reader.readAsText(file)}function parseCSV(text){var lines=text.split("\n");postalData=[];for(var i=1;i<lines.length;i++){var line=lines[i].trim();if(!line)continue;var parts=line.split(";");if(parts.length>=2){var commune=parts[0].trim();var cp=parts[1].trim();if(cp.length===4&&!isNaN(cp)){cp="0"+cp}var dept=cp.substring(0,2);if(departments[dept]){postalData.push({commune:commune,cp:cp,dept:dept})}}}saveToStorage();showMainSection();updatePostalGrid()}function showMainSection(){document.getElementById("uploadSection").classList.add("hidden");document.getElementById("mainSection").classList.remove("hidden");document.getElementById("listSection").classList.remove("hidden");updateStats()}function updateStats(){var assignedCount=Object.keys(zones).length;document.getElementById("stats").textContent=postalData.length+" communes • "+assignedCount+" codes postaux colorés"}function updatePostalGrid(){var search=document.getElementById("searchInput").value.toLowerCase();var dept=document.getElementById("deptSelect").value;var filtered=postalData.filter(function(item){var matchDept=dept==="all"||item.dept===dept;var matchSearch=!search||item.commune.toLowerCase().includes(search)||item.cp.includes(search);return matchDept&&matchSearch});var grouped={};filtered.forEach(function(item){if(!grouped[item.cp])grouped[item.cp]=[];grouped[item.cp].push(item.commune)});var grid=document.getElementById("postalGrid");grid.innerHTML="";document.getElementById("postalCount").textContent=Object.keys(grouped).length;Object.keys(grouped).sort().forEach(function(cp){var zone=zones[cp];var communes=grouped[cp];var btn=document.createElement("div");btn.className="postal-btn"+(zone?" assigned":"");btn.style.backgroundColor=zone?zone.color:"#ffffff";btn.style.color=zone&&zone.color!=="#FFFFFF"?"#fff":"#000";btn.title=communes.join(", ")+"\n"+(zone?zone.name:"Non attribué");btn.onclick=function(){return togglePostalCode(cp)};btn.innerHTML='<div class="postal-code">'+cp+"</div>"+(zone?'<div class="postal-zone">'+zone.name+"</div>":"");grid.appendChild(btn)})}function togglePostalCode(cp){var zoneName=document.getElementById("zoneName").value||"Zone sans nom";if(zones[cp]&&zones[cp].color===selectedColor){delete zones[cp]}else{zones[cp]={color:selectedColor,name:zoneName}}saveToStorage();updatePostalGrid();updateStats();if(map&&geoDataCache){updateMapColors()}}function toggleView(){if(currentView==="list"){currentView="map";document.getElementById("listSection").classList.add("hidden");document.getElementById("mapSection").classList.remove("hidden");if(!map){initMap()}else if(!geoDataCache&&!isLoadingGeo){loadGeoData()}}else{currentView="list";document.getElementById("mapSection").classList.add("hidden");document.getElementById("listSection").classList.remove("hidden")}}function initMap(){map=L.map("map").setView([49.5,1.5],8);L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{attribution:"© OpenStreetMap",maxZoom:19}).addTo(map);geoLayerGroup=L.layerGroup().addTo(map);loadGeoData()}async function loadGeoData(){if(isLoadingGeo)return;isLoadingGeo=true;document.getElementById("loadingSection").classList.remove("hidden");document.getElementById("successSection").classList.add("hidden");document.getElementById("toggleViewBtn").disabled=true;var depts=Object.keys(departments);var total=depts.length;var loaded=0;var allFeatures=[];document.getElementById("loadingText").textContent="Chargement par département ("+total+" départements)...";for(var i=0;i<depts.length;i++){var dept=depts[i];document.getElementById("loadingText").textContent="Chargement du département "+dept+" ("+departments[dept]+")...";try{var response=await fetch("https://geo.api.gouv.fr/departements/"+dept+"/communes?fields=nom,code,codesPostaux&format=geojson&geometry=contour");if(response.ok){var data=await response.json();            if(data.features){data.features.forEach(function(feature){var communeName=feature.properties.nom;var apiCodesPostaux=feature.properties.codesPostaux||[];var matchingItems=postalData.filter(function(d){var nameMatch=d.commune.toLowerCase()===communeName.toLowerCase();var cpMatch=apiCodesPostaux.includes(d.cp);return nameMatch||cpMatch});if(matchingItems.length>0){matchingItems.forEach(function(item){var featureCopy=JSON.parse(JSON.stringify(feature));featureCopy.properties.codePostal=item.cp;featureCopy.properties.matchedCommune=item.commune;if(featureCopy.geometry&&featureCopy.geometry.coordinates){try{var simplified=simplifyCoordinates(featureCopy.geometry.coordinates,.001);featureCopy.geometry.coordinates=simplified}catch(e){}}allFeatures.push(featureCopy)})}else if(apiCodesPostaux.length>0){var firstCP=apiCodesPostaux[0];if(firstCP.substring(0,2)===dept){feature.properties.codePostal=firstCP;if(feature.geometry&&feature.geometry.coordinates){try{var simplified=simplifyCoordinates(feature.geometry.coordinates,.001);feature.geometry.coordinates=simplified}catch(e){}}allFeatures.push(feature)}}})}}}catch(error){console.log("Erreur département "+dept)}loaded++;var percent=Math.round(loaded/total*100);document.getElementById("progressFill").style.width=percent+"%";document.getElementById("progressFill").textContent=percent+"%"}geoDataCache=allFeatures;try{localStorage.setItem("geoDataCache",JSON.stringify(allFeatures))}catch(e){console.log("Cache trop volumineux, non sauvegardé")}document.getElementById("loadingSection").classList.add("hidden");document.getElementById("successSection").classList.remove("hidden");setTimeout(function(){document.getElementById("successSection").classList.add("hidden")},5e3);document.getElementById("toggleViewBtn").disabled=false;isLoadingGeo=false;displayGeoData()}function simplifyCoordinates(coords,tolerance){if(!coords||coords.length===0)return coords;if(typeof coords[0]==="number"){return coords}if(Array.isArray(coords[0])&&typeof coords[0][0]==="number"){if(coords.length<=10)return coords;var simplified=[];var step=Math.max(1,Math.floor(coords.length/50));for(var i=0;i<coords.length;i+=step){simplified.push(coords[i])}if(simplified[simplified.length-1]!==coords[coords.length-1]){simplified.push(coords[coords.length-1])}return simplified}return coords.map(function(c){return simplifyCoordinates(c,tolerance)})}function displayGeoData(){if(!map||!geoDataCache)return;geoLayerGroup.clearLayers();var cpMapping={};postalData.forEach(function(item){if(!cpMapping[item.commune]){cpMapping[item.commune]=item.cp}});geoDataCache.forEach(function(feature){var cp=feature.properties.codePostal;var zone=zones[cp];var color=zone?zone.color:"#e5e7eb";var layer=L.geoJSON(feature,{style:{fillColor:color,fillOpacity:.7,color:"#666",weight:1},onEachFeature:function(f,l){l.on("click",function(){togglePostalCode(cp)});var name=f.properties.nom||"";l.bindTooltip(name+"<br/>CP: "+cp+(zone?"<br/>"+zone.name:""),{sticky:true})}});geoLayerGroup.addLayer(layer)})}function updateMapColors(){displayGeoData()}function exportData(){var colorGroups={};Object.entries(zones).forEach(function(a){var cp=a[0];var data=a[1];if(!colorGroups[data.color]){colorGroups[data.color]={name:data.name,postalCodes:[]}}colorGroups[data.color].postalCodes.push(cp)});var text="EXPORT DES ZONES DE PERMANENCE\n================================\n\n";Object.entries(colorGroups).forEach(function(a){var color=a[0];var data=a[1];var colorName=colors.find(function(c){return c.hex===color});text+=data.name+" ("+(colorName?colorName.name:"Couleur personnalisée")+")\n";text+="Codes postaux ("+data.postalCodes.length+"): "+data.postalCodes.sort().join(", ")+"\n\n"});var blob=new Blob([text],{type:"text/plain"});var url=URL.createObjectURL(blob);var a=document.createElement("a");a.href=url;a.download="zones-permanence.txt";a.click()}function clearAll(){if(confirm("Effacer toutes les zones colorées ?")){zones={};saveToStorage();updatePostalGrid();updateStats();if(map&&geoDataCache){updateMapColors()}}}function reloadCSV(){postalData=[];zones={};geoDataCache=null;localStorage.clear();document.getElementById("uploadSection").classList.remove("hidden");document.getElementById("mainSection").classList.add("hidden");document.getElementById("listSection").classList.add("hidden");document.getElementById("mapSection").classList.add("hidden");document.getElementById("fileInput").value="";if(map){map.remove();map=null;geoLayerGroup=null}}function saveToStorage(){localStorage.setItem("postalData",JSON.stringify(postalData));localStorage.setItem("zones",JSON.stringify(zones))}function loadFromStorage(){var savedData=localStorage.getItem("postalData");var savedZones=localStorage.getItem("zones");var savedGeo=localStorage.getItem("geoDataCache");if(savedData){postalData=JSON.parse(savedData);showMainSection();updatePostalGrid()}if(savedZones){zones=JSON.parse(savedZones);updatePostalGrid();updateStats()}if(savedGeo){try{geoDataCache=JSON.parse(savedGeo)}catch(e){localStorage.removeItem("geoDataCache")}}}
+        var postalData = [];
+        var zones = {};
+        var selectedColor = "#FF6B6B";
+        var currentView = "list";
+        var map = null;
+        var geoLayerGroup = null;
+        var geoDataCache = null;
+        var isLoadingGeo = false;
+
+        var colors = [
+            {name:"Rouge",hex:"#FF6B6B"},{name:"Orange",hex:"#FFA07A"},{name:"Jaune",hex:"#FFD93D"},
+            {name:"Vert clair",hex:"#6BCF7F"},{name:"Vert",hex:"#2ECC71"},{name:"Turquoise",hex:"#4ECDC4"},
+            {name:"Bleu clair",hex:"#74B9FF"},{name:"Bleu",hex:"#3498DB"},{name:"Violet",hex:"#A29BFE"},
+            {name:"Rose",hex:"#FD79A8"},{name:"Magenta",hex:"#E056FD"},{name:"Marron",hex:"#B8860B"},
+            {name:"Gris",hex:"#95A5A6"},{name:"Noir",hex:"#2C3E50"},{name:"Blanc",hex:"#FFFFFF"}
+        ];
+
+        var departments = {
+            "02":"Aisne","59":"Nord","60":"Oise","62":"Pas-de-Calais","80":"Somme",
+            "14":"Calvados","27":"Eure","50":"Manche","61":"Orne","76":"Seine-Maritime"
+        };
+        
+        // Département Aisne (02) désactivé car trop lourd pour la carte
+        var departmentsAll = {
+            "02":"Aisne","59":"Nord","60":"Oise","62":"Pas-de-Calais","80":"Somme",
+            "14":"Calvados","27":"Eure","50":"Manche","61":"Orne","76":"Seine-Maritime"
+        };
+
+        document.addEventListener("DOMContentLoaded", function() {
+            loadFromStorage();
+            initColorGrid();
+            document.getElementById("fileInput").addEventListener("change", handleFileUpload);
+            document.getElementById("searchInput").addEventListener("input", updatePostalGrid);
+            document.getElementById("deptSelect").addEventListener("change", updatePostalGrid);
+            
+            // Si des données sont déjà en mémoire, afficher l'interface
+            if (postalData.length > 0) {
+                showMainSection();
+                updatePostalGrid();
+            }
+        });
+
+        function initColorGrid() {
+            var grid = document.getElementById("colorGrid");
+            colors.forEach(function(color) {
+                var btn = document.createElement("div");
+                btn.className = "color-btn";
+                btn.style.backgroundColor = color.hex;
+                btn.title = color.name;
+                btn.onclick = function() { selectColor(color.hex, btn); };
+                if (color.hex === selectedColor) btn.classList.add("selected");
+                grid.appendChild(btn);
+            });
+        }
+
+        function selectColor(hex, element) {
+            selectedColor = hex;
+            document.querySelectorAll(".color-btn").forEach(btn => btn.classList.remove("selected"));
+            element.classList.add("selected");
+        }
+
+        function handleFileUpload(event) {
+            var file = event.target.files[0];
+            if (!file) return;
+            
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                var text = e.target.result;
+                parseCSV(text);
+            };
+            reader.readAsText(file);
+        }
+
+        function parseCSV(text) {
+            var lines = text.split("\n");
+            postalData = [];
+            
+            for (var i = 1; i < lines.length; i++) {
+                var line = lines[i].trim();
+                if (!line) continue;
+                
+                var parts = line.split(";");
+                if (parts.length >= 2) {
+                    var commune = parts[0].trim();
+                    var cp = parts[1].trim();
+                    
+                    // Gérer les codes postaux à 4 chiffres
+                    if (cp.length === 4 && !isNaN(cp)) {
+                        cp = "0" + cp;
+                    }
+                    
+                    var dept = cp.substring(0, 2);
+                    if (departmentsAll[dept]) {
+                        postalData.push({commune: commune, cp: cp, dept: dept});
+                    }
+                }
+            }
+            
+            saveToStorage();
+            showMainSection();
+            updatePostalGrid();
+        }
+
+        function showMainSection() {
+            document.getElementById("uploadSection").classList.add("hidden");
+            document.getElementById("mainSection").classList.remove("hidden");
+            document.getElementById("listSection").classList.remove("hidden");
+            updateStats();
+        }
+
+        function updateStats() {
+            var assignedCount = Object.keys(zones).length;
+            document.getElementById("stats").textContent = postalData.length + " communes • " + assignedCount + " codes postaux colorés";
+        }
+
+        function updatePostalGrid() {
+            var search = document.getElementById("searchInput").value.toLowerCase();
+            var dept = document.getElementById("deptSelect").value;
+            
+            var filtered = postalData.filter(function(item) {
+                var matchDept = dept === "all" || item.dept === dept;
+                var matchSearch = !search || item.commune.toLowerCase().includes(search) || item.cp.includes(search);
+                return matchDept && matchSearch;
+            });
+
+            var grouped = {};
+            filtered.forEach(function(item) {
+                if (!grouped[item.cp]) grouped[item.cp] = [];
+                grouped[item.cp].push(item.commune);
+            });
+
+            var grid = document.getElementById("postalGrid");
+            grid.innerHTML = "";
+            document.getElementById("postalCount").textContent = Object.keys(grouped).length;
+
+            Object.keys(grouped).sort().forEach(function(cp) {
+                var zone = zones[cp];
+                var communes = grouped[cp];
+                var btn = document.createElement("div");
+                btn.className = "postal-btn" + (zone ? " assigned" : "");
+                btn.style.backgroundColor = zone ? zone.color : "#ffffff";
+                btn.style.color = zone && zone.color !== "#FFFFFF" ? "#fff" : "#000";
+                btn.title = communes.join(", ") + "\n" + (zone ? zone.name : "Non attribué");
+                btn.onclick = function() { togglePostalCode(cp); };
+                btn.innerHTML = '<div class="postal-code">' + cp + "</div>" + 
+                    (zone ? '<div class="postal-zone">' + zone.name + "</div>" : "");
+                grid.appendChild(btn);
+            });
+        }
+
+        function togglePostalCode(cp) {
+            var zoneName = document.getElementById("zoneName").value || "Zone sans nom";
+            if (zones[cp] && zones[cp].color === selectedColor) {
+                delete zones[cp];
+            } else {
+                zones[cp] = {color: selectedColor, name: zoneName};
+            }
+            saveToStorage();
+            updatePostalGrid();
+            updateStats();
+            if (map && geoDataCache) updateMapColors();
+        }
+
+        function toggleView() {
+            if (currentView === "list") {
+                currentView = "map";
+                document.getElementById("listSection").classList.add("hidden");
+                document.getElementById("mapSection").classList.remove("hidden");
+                if (!map) {
+                    initMap();
+                } else if (!geoDataCache && !isLoadingGeo) {
+                    loadGeoData();
+                }
+            } else {
+                currentView = "list";
+                document.getElementById("mapSection").classList.add("hidden");
+                document.getElementById("listSection").classList.remove("hidden");
+            }
+        }
+
+        function initMap() {
+            map = L.map("map").setView([49.5, 1.5], 8);
+            L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+                attribution: "© OpenStreetMap",
+                maxZoom: 19
+            }).addTo(map);
+            geoLayerGroup = L.layerGroup().addTo(map);
+            loadGeoData();
+        }
+
+        async function loadGeoData() {
+            if (isLoadingGeo) return;
+            isLoadingGeo = true;
+            document.getElementById("loadingSection").classList.remove("hidden");
+            document.getElementById("successSection").classList.add("hidden");
+            document.getElementById("toggleViewBtn").disabled = true;
+
+            // Exclure l'Aisne (02) de la carte pour éviter les crashs
+            var depts = Object.keys(departments).filter(d => d !== "02");
+            var total = depts.length;
+            var loaded = 0;
+            var allFeatures = [];
+            
+            document.getElementById("loadingText").textContent = "Note : L'Aisne (02) n'est pas affichée sur la carte pour des raisons de performance, mais reste disponible dans la liste des codes postaux.";
+
+            for (var i = 0; i < depts.length; i++) {
+                var dept = depts[i];
+                document.getElementById("loadingText").textContent = "Chargement du département " + dept + " (" + departments[dept] + ")...";
+                
+                try {
+                    var response = await fetch("https://geo.api.gouv.fr/departements/" + dept + "/communes?fields=nom,code,codesPostaux&format=geojson&geometry=contour");
+                    if (response.ok) {
+                        var data = await response.json();
+                        if (data.features) {
+                            data.features.forEach(function(feature) {
+                                var communeName = feature.properties.nom;
+                                var apiCodesPostaux = feature.properties.codesPostaux || [];
+                                var matchingItems = postalData.filter(function(d) {
+                                    return d.commune.toLowerCase() === communeName.toLowerCase() || apiCodesPostaux.includes(d.cp);
+                                });
+                                
+                                if (matchingItems.length > 0) {
+                                    matchingItems.forEach(function(item) {
+                                        // Simplification modérée
+                                        var maxPoints = 15;
+                                        
+                                        if (feature.geometry && feature.geometry.coordinates) {
+                                            feature.geometry.coordinates = simplifyGeometry(feature.geometry.coordinates, 0.001, maxPoints);
+                                        }
+                                        
+                                        var featureCopy = {
+                                            type: feature.type,
+                                            geometry: feature.geometry,
+                                            properties: {
+                                                codePostal: item.cp,
+                                                matchedCommune: item.commune,
+                                                nom: feature.properties.nom
+                                            }
+                                        };
+                                        
+                                        allFeatures.push(featureCopy);
+                                    });
+                                }
+                            });
+                        }
+                    }
+                } catch (error) {
+                    console.log("Erreur département " + dept);
+                }
+                
+                loaded++;
+                var percent = Math.round((loaded / total) * 100);
+                document.getElementById("progressFill").style.width = percent + "%";
+                document.getElementById("progressFill").textContent = percent + "%";
+                
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+
+            geoDataCache = allFeatures;
+            document.getElementById("loadingSection").classList.add("hidden");
+            document.getElementById("successSection").classList.remove("hidden");
+            document.getElementById("successSection").innerHTML = "<strong>✅ Carte chargée avec succès !</strong><br><small>L'Aisne (02) n'est pas affichée sur la carte mais reste disponible dans la liste.</small>";
+            setTimeout(function() {
+                document.getElementById("successSection").classList.add("hidden");
+            }, 8000);
+            document.getElementById("toggleViewBtn").disabled = false;
+            isLoadingGeo = false;
+            displayGeoData();
+        }
+
+        function displayGeoData() {
+            if (!map || !geoDataCache) return;
+            geoLayerGroup.clearLayers();
+            
+            geoDataCache.forEach(function(feature) {
+                var cp = feature.properties.codePostal;
+                if (!cp) return;
+                var zone = zones[cp];
+                var color = zone ? zone.color : "#e5e7eb";
+                
+                var layer = L.geoJSON(feature, {
+                    style: {fillColor: color, fillOpacity: 0.7, color: "#666", weight: 1},
+                    onEachFeature: function(f, l) {
+                        l.on("click", function() { togglePostalCode(cp); });
+                        var name = f.properties.nom || f.properties.matchedCommune || "";
+                        l.bindTooltip("<strong>" + name + "</strong><br/>CP: " + cp + 
+                            (zone ? "<br/><span style='color:" + color + ";font-weight:bold;'>" + zone.name + "</span>" : ""),
+                            {sticky: true}
+                        );
+                    }
+                });
+                geoLayerGroup.addLayer(layer);
+            });
+        }
+
+        // Fonction pour simplifier drastiquement la géométrie
+        function simplifyGeometry(coords, tolerance, maxPoints) {
+            if (!coords || coords.length === 0) return coords;
+            
+            maxPoints = maxPoints || 15; // Par défaut 15 points (réduit de 20)
+            
+            // Si c'est un point [lon, lat]
+            if (typeof coords[0] === 'number') {
+                return coords;
+            }
+            
+            // Si c'est un tableau de points [[lon,lat], [lon,lat], ...]
+            if (Array.isArray(coords[0]) && typeof coords[0][0] === 'number') {
+                // Ne garder qu'un point sur X pour réduire drastiquement la mémoire
+                if (coords.length <= maxPoints) return coords;
+                
+                var simplified = [coords[0]]; // Toujours garder le premier point
+                var step = Math.max(2, Math.floor(coords.length / maxPoints)); // Minimum step de 2
+                
+                for (var i = step; i < coords.length - 1; i += step) {
+                    simplified.push(coords[i]);
+                }
+                
+                // Toujours garder le dernier point pour fermer le polygone
+                simplified.push(coords[coords.length - 1]);
+                
+                return simplified;
+            }
+            
+            // Si c'est un tableau de tableaux (MultiPolygon ou Polygon avec trous)
+            return coords.map(function(c) {
+                return simplifyGeometry(c, tolerance, maxPoints);
+            });
+        }
+
+        function updateMapColors() {
+            displayGeoData();
+        }
+
+        function exportData() {
+            var colorGroups = {};
+            Object.entries(zones).forEach(function([cp, data]) {
+                if (!colorGroups[data.color]) {
+                    colorGroups[data.color] = {name: data.name, postalCodes: []};
+                }
+                colorGroups[data.color].postalCodes.push(cp);
+            });
+
+            var text = "EXPORT DES ZONES DE PERMANENCE\n================================\n\n";
+            Object.entries(colorGroups).forEach(function([color, data]) {
+                var colorName = colors.find(c => c.hex === color);
+                text += data.name + " (" + (colorName ? colorName.name : "Couleur personnalisée") + ")\n";
+                text += "Codes postaux (" + data.postalCodes.length + "): " + data.postalCodes.sort().join(", ") + "\n\n";
+            });
+
+            var blob = new Blob([text], {type: "text/plain"});
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement("a");
+            a.href = url;
+            a.download = "zones-permanence.txt";
+            a.click();
+        }
+
+        function clearAll() {
+            if (confirm("Effacer toutes les zones colorées ?")) {
+                zones = {};
+                saveToStorage();
+                updatePostalGrid();
+                updateStats();
+                if (map && geoDataCache) updateMapColors();
+            }
+        }
+
+        function reloadCSV() {
+            if (confirm("Voulez-vous recharger un nouveau fichier CSV ? Cela effacera les données actuelles.")) {
+                postalData = [];
+                zones = {};
+                geoDataCache = null;
+                localStorage.clear();
+                document.getElementById("uploadSection").classList.remove("hidden");
+                document.getElementById("mainSection").classList.add("hidden");
+                document.getElementById("listSection").classList.add("hidden");
+                document.getElementById("mapSection").classList.add("hidden");
+                document.getElementById("fileInput").value = "";
+                if (map) {
+                    map.remove();
+                    map = null;
+                    geoLayerGroup = null;
+                }
+            }
+        }
+
+        function saveToStorage() {
+            localStorage.setItem("postalData", JSON.stringify(postalData));
+            localStorage.setItem("zones", JSON.stringify(zones));
+        }
+
+        function loadFromStorage() {
+            var savedData = localStorage.getItem("postalData");
+            var savedZones = localStorage.getItem("zones");
+            
+            if (savedData) {
+                postalData = JSON.parse(savedData);
+            }
+            if (savedZones) {
+                zones = JSON.parse(savedZones);
+            }
+        }
     </script>
 </body>
 </html>
