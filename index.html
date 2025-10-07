@@ -61,10 +61,13 @@
             <div id="mainSection" class="hidden">
                 <div class="btn-group">
                     <button class="btn-green" id="toggleViewBtn" onclick="toggleView()">Vue Carte / Liste</button>
-                    <button class="btn-blue" onclick="exportData()">Exporter</button>
-                    <button class="btn-purple" onclick="reloadCSV()">Recharger CSV</button>
-                    <button class="btn-purple" onclick="reloadMap()">Recharger Carte</button>
-                    <button class="btn-red" onclick="clearAll()">Effacer tout</button>
+                    <button class="btn-blue" onclick="exportData()">⬇️ Exporter TXT</button>
+                    <button class="btn-blue" onclick="exportJSON()">⬇️ Exporter JSON</button>
+                    <button class="btn-blue" onclick="document.getElementById('importJSON').click()">⬆️ Importer JSON</button>
+                    <input type="file" id="importJSON" accept=".json" style="display:none;" onchange="importJSON(event)">
+                    <button class="btn-purple" onclick="reloadCSV()">📁 Recharger CSV</button>
+                    <button class="btn-purple" onclick="reloadMap()">🗺️ Recharger Carte</button>
+                    <button class="btn-red" onclick="clearAll()">🗑️ Effacer tout</button>
                     <div class="stats" id="stats"></div>
                 </div>
                 
@@ -562,6 +565,70 @@
             a.click();
         }
 
+        function exportJSON() {
+            var exportData = {
+                version: "1.0",
+                date: new Date().toISOString(),
+                zones: zones,
+                postalData: postalData
+            };
+            
+            var json = JSON.stringify(exportData, null, 2);
+            var blob = new Blob([json], {type: "application/json"});
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement("a");
+            a.href = url;
+            var dateStr = new Date().toISOString().split('T')[0];
+            a.download = "zones-permanence-" + dateStr + ".json";
+            a.click();
+            
+            alert("Configuration exportée avec succès !\n\nVous pouvez maintenant partager ce fichier JSON avec vos collègues.\n\nIls pourront l'importer pour retrouver exactement vos zones colorées.");
+        }
+
+        function importJSON(event) {
+            var file = event.target.files[0];
+            if (!file) return;
+            
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    var importData = JSON.parse(e.target.result);
+                    
+                    if (!importData.zones || !importData.postalData) {
+                        alert("❌ Fichier JSON invalide. Assurez-vous d'importer un fichier exporté depuis cette application.");
+                        return;
+                    }
+                    
+                    if (Object.keys(zones).length > 0) {
+                        if (!confirm("⚠️ Vous avez déjà des zones colorées.\n\nVoulez-vous remplacer votre configuration actuelle par celle du fichier importé ?")) {
+                            return;
+                        }
+                    }
+                    
+                    zones = importData.zones;
+                    postalData = importData.postalData;
+                    
+                    saveToStorage();
+                    showMainSection();
+                    updatePostalGrid();
+                    updateStats();
+                    
+                    if (map && geoDataCache) {
+                        updateMapColors();
+                    }
+                    
+                    alert("✅ Configuration importée avec succès !\n\n" + Object.keys(zones).length + " codes postaux colorés ont été restaurés.");
+                    
+                } catch (error) {
+                    alert("❌ Erreur lors de l'import du fichier JSON.\n\nAssurez-vous que le fichier n'est pas corrompu.");
+                    console.error(error);
+                }
+            };
+            reader.readAsText(file);
+            
+            event.target.value = "";
+        }
+
         function clearAll() {
             if (confirm("Effacer toutes les zones colorées ?")) {
                 zones = {};
@@ -633,5 +700,4 @@
         }
     </script>
 </body>
-</html>
 </html>
