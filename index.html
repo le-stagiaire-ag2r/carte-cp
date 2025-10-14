@@ -592,11 +592,13 @@
                     var cpData = geoDataCache[cp];
                     var zone = zones[cp];
                     
+                    // Si la zone est décochée, afficher en gris au lieu de masquer
+                    var color;
                     if (zone && !activeZoneFilters[zone.name]) {
-                        continue;
+                        color = "#e5e7eb"; // Gris par défaut (zone décochée)
+                    } else {
+                        color = zone ? zone.color : "#e5e7eb";
                     }
-                    
-                    var color = zone ? zone.color : "#e5e7eb";
                     
                     for (var j = 0; j < cpData.geometries.length; j++) {
                         var geom = cpData.geometries[j];
