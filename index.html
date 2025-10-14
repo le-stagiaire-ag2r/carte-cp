@@ -137,16 +137,16 @@
                 <h3 style="margin-bottom: 12px;">🚩 Gestion des drapeaux</h3>
                 <div class="flag-controls">
                     <button class="flag-mode-btn" id="flagPermanence" style="background:#FF1744;color:white;" onclick="setFlagMode('permanence')">
-                        📍 Permanence
+                        🔴 Permanence Active
                     </button>
                     <button class="flag-mode-btn" id="flagAgence" style="background:#2962FF;color:white;" onclick="setFlagMode('agence')">
-                        🏢 Agence
+                        🔵 Permanence Inactive
                     </button>
                     <button class="btn-red" onclick="disableFlagMode()">❌ Annuler</button>
                     <input type="text" id="flagName" placeholder="Nom du drapeau..." style="flex: 1; min-width: 200px;">
                 </div>
                 <div id="flagModeInfo" class="hidden" style="background:#fff3cd;padding:8px;border-radius:4px;margin-bottom:8px;font-size:13px;">
-                    <strong>Mode placement activé :</strong> Cliquez sur la carte pour placer un drapeau
+                    <strong>Mode placement activé :</strong> Cliquez sur la carte pour placer un drapeau (rayon de 25km automatique)
                 </div>
                 <div class="flag-list" id="flagList"></div>
             </div>
@@ -697,8 +697,20 @@
             for (var i = 0; i < flags.length; i++) {
                 var flag = flags[i];
                 var color = flag.type === "permanence" ? "#FF1744" : "#2962FF";
-                var icon = flag.type === "permanence" ? "📍" : "🏢";
+                var icon = flag.type === "permanence" ? "🔴" : "🔵";
                 
+                // Ajouter un cercle de 25km autour du drapeau
+                var circle = L.circle([flag.lat, flag.lng], {
+                    color: color,
+                    fillColor: color,
+                    fillOpacity: 0.1,
+                    radius: 25000, // 25km en mètres
+                    weight: 2,
+                    dashArray: '5, 10'
+                });
+                flagMarkers.addLayer(circle);
+                
+                // Ajouter le marqueur drapeau
                 var customIcon = L.divIcon({
                     className: 'custom-flag-marker',
                     html: '<div style="font-size:32px;text-shadow:2px 2px 4px rgba(0,0,0,0.5);">' + icon + '</div>',
@@ -707,8 +719,8 @@
                 });
                 
                 var marker = L.marker([flag.lat, flag.lng], {icon: customIcon});
-                marker.bindPopup("<strong>" + (flag.type === "permanence" ? "📍 Permanence" : "🏢 Agence") + 
-                    "</strong><br/>" + flag.name);
+                marker.bindPopup("<strong>" + (flag.type === "permanence" ? "🔴 Permanence Active" : "🔵 Permanence Inactive") + 
+                    "</strong><br/>" + flag.name + "<br/><small style='color:#666;'>Rayon: 25km</small>");
                 marker.on('click', function() {
                     this.openPopup();
                 });
@@ -732,9 +744,9 @@
                 div.className = "flag-item";
                 div.style.backgroundColor = flag.type === "permanence" ? "#ffcdd2" : "#bbdefb";
                 
-                var icon = flag.type === "permanence" ? "📍" : "🏢";
+                var icon = flag.type === "permanence" ? "🔴" : "🔵";
                 var span = document.createElement("span");
-                span.textContent = icon + " " + flag.name;
+                span.innerHTML = icon + " " + flag.name + " <small style='color:#666;'>(25km)</small>";
                 span.style.fontWeight = "500";
                 
                 var btn = document.createElement("button");
