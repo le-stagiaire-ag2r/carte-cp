@@ -42,6 +42,19 @@
         .progress-bar { width: 100%; height: 24px; background: #e5e7eb; border-radius: 12px; overflow: hidden; margin: 16px 0; }
         .progress-fill { height: 100%; background: linear-gradient(90deg, #3b82f6, #10b981); transition: width 0.3s; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 12px; }
         .loading-text { text-align: center; color: #6b7280; margin-top: 8px; }
+        .flag-section { background: #fef3c7; border: 2px solid #fbbf24; padding: 16px; border-radius: 8px; margin-bottom: 16px; }
+        .flag-controls { display: flex; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; align-items: center; }
+        .flag-mode-btn { padding: 8px 16px; border: 2px solid #000; border-radius: 6px; cursor: pointer; font-weight: bold; transition: all 0.2s; }
+        .flag-mode-btn.active { transform: scale(1.1); box-shadow: 0 0 10px rgba(0,0,0,0.3); }
+        .flag-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; margin-top: 12px; }
+        .flag-item { padding: 10px; border: 2px solid #000; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; }
+        .flag-delete { background: #ef4444; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+        .zone-filter { background: #e0e7ff; border: 2px solid #818cf8; padding: 16px; border-radius: 8px; margin-bottom: 16px; }
+        .zone-checkboxes { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; margin-top: 12px; }
+        .zone-checkbox-item { display: flex; align-items: center; gap: 8px; padding: 8px; background: white; border-radius: 6px; cursor: pointer; }
+        .zone-checkbox-item:hover { background: #f3f4f6; }
+        .zone-checkbox-item input[type="checkbox"] { cursor: pointer; width: 18px; height: 18px; }
+        .zone-color-indicator { width: 24px; height: 24px; border-radius: 4px; border: 2px solid #000; }
         @media (max-width: 768px) { .grid-2 { grid-template-columns: 1fr; } }
     </style>
 </head>
@@ -104,6 +117,12 @@
                         </select>
                     </div>
                 </div>
+                
+                <div class="zone-filter">
+                    <h3 style="margin-bottom: 8px;">🎯 Filtre par zones</h3>
+                    <p style="font-size: 13px; color: #6b7280; margin-bottom: 12px;">Cochez les zones à afficher</p>
+                    <div class="zone-checkboxes" id="zoneFilterList"></div>
+                </div>
             </div>
         </div>
         
@@ -112,6 +131,24 @@
             <div class="info-box">
                 <strong>Carte interactive :</strong> Les communes sont colorées selon leur code postal. 
                 Cliquez sur une commune pour l'attribuer à une zone. Tous les départements sont affichés.
+            </div>
+            
+            <div class="flag-section">
+                <h3 style="margin-bottom: 12px;">🚩 Gestion des drapeaux</h3>
+                <div class="flag-controls">
+                    <button class="flag-mode-btn" id="flagPermanence" style="background:#FF1744;color:white;" onclick="setFlagMode('permanence')">
+                        📍 Permanence
+                    </button>
+                    <button class="flag-mode-btn" id="flagAgence" style="background:#2962FF;color:white;" onclick="setFlagMode('agence')">
+                        🏢 Agence
+                    </button>
+                    <button class="btn-red" onclick="disableFlagMode()">❌ Annuler</button>
+                    <input type="text" id="flagName" placeholder="Nom du drapeau..." style="flex: 1; min-width: 200px;">
+                </div>
+                <div id="flagModeInfo" class="hidden" style="background:#fff3cd;padding:8px;border-radius:4px;margin-bottom:8px;font-size:13px;">
+                    <strong>Mode placement activé :</strong> Cliquez sur la carte pour placer un drapeau
+                </div>
+                <div class="flag-list" id="flagList"></div>
             </div>
             
             <div id="loadingSection" class="hidden">
@@ -151,6 +188,10 @@
         var geoLayerGroup = null;
         var geoDataCache = null;
         var isLoadingGeo = false;
+        var flags = [];
+        var flagMode = null;
+        var flagMarkers = L.layerGroup();
+        var activeZoneFilters = {};
 
         var colors = [
             {name:"Rouge",hex:"#FF6B6B"},{name:"Orange",hex:"#FFA07A"},{name:"Jaune",hex:"#FFD93D"},
@@ -168,6 +209,7 @@
         document.addEventListener("DOMContentLoaded", function() {
             loadFromStorage();
             initColorGrid();
+            initZoneFilters();
             document.getElementById("fileInput").addEventListener("change", handleFileUpload);
             document.getElementById("searchInput").addEventListener("input", updatePostalGrid);
             document.getElementById("deptSelect").addEventListener("change", updatePostalGrid);
@@ -252,6 +294,69 @@
             document.getElementById("stats").textContent = postalData.length + " communes • " + assignedCount + " codes postaux colorés";
         }
 
+        function initZoneFilters() {
+            var zoneNames = {};
+            var cpList = Object.keys(zones);
+            for (var i = 0; i < cpList.length; i++) {
+                var zoneName = zones[cpList[i]].name;
+                if (!zoneNames[zoneName]) {
+                    zoneNames[zoneName] = {
+                        color: zones[cpList[i]].color,
+                        count: 0
+                    };
+                }
+                zoneNames[zoneName].count++;
+            }
+            
+            var container = document.getElementById("zoneFilterList");
+            container.innerHTML = "";
+            var sortedZones = Object.keys(zoneNames).sort();
+            
+            if (sortedZones.length === 0) {
+                container.innerHTML = '<p style="color:#6b7280;font-size:13px;">Aucune zone créée pour le moment</p>';
+                return;
+            }
+            
+            var fragment = document.createDocumentFragment();
+            for (var i = 0; i < sortedZones.length; i++) {
+                var zoneName = sortedZones[i];
+                var zoneData = zoneNames[zoneName];
+                
+                if (activeZoneFilters[zoneName] === undefined) {
+                    activeZoneFilters[zoneName] = true;
+                }
+                
+                var label = document.createElement("label");
+                label.className = "zone-checkbox-item";
+                
+                var checkbox = document.createElement("input");
+                checkbox.type = "checkbox";
+                checkbox.checked = activeZoneFilters[zoneName];
+                checkbox.onchange = (function(name) {
+                    return function(e) {
+                        activeZoneFilters[name] = e.target.checked;
+                        updatePostalGrid();
+                        if (map && geoDataCache) updateMapColors();
+                    };
+                })(zoneName);
+                
+                var colorDiv = document.createElement("div");
+                colorDiv.className = "zone-color-indicator";
+                colorDiv.style.backgroundColor = zoneData.color;
+                
+                var text = document.createElement("span");
+                text.style.flex = "1";
+                text.style.fontWeight = "500";
+                text.textContent = zoneName + " (" + zoneData.count + " CP)";
+                
+                label.appendChild(checkbox);
+                label.appendChild(colorDiv);
+                label.appendChild(text);
+                fragment.appendChild(label);
+            }
+            container.appendChild(fragment);
+        }
+
         function updatePostalGrid() {
             var search = document.getElementById("searchInput").value.toLowerCase();
             var dept = document.getElementById("deptSelect").value;
@@ -261,7 +366,11 @@
                 var item = postalData[i];
                 var matchDept = dept === "all" || item.dept === dept;
                 var matchSearch = !search || item.commune.toLowerCase().indexOf(search) !== -1 || item.cp.indexOf(search) !== -1;
-                if (matchDept && matchSearch) {
+                
+                var zone = zones[item.cp];
+                var matchZone = !zone || activeZoneFilters[zone.name];
+                
+                if (matchDept && matchSearch && matchZone) {
                     filtered.push(item);
                 }
             }
@@ -308,6 +417,7 @@
             saveToStorage();
             updatePostalGrid();
             updateStats();
+            initZoneFilters();
             if (map && geoDataCache) updateMapColors();
         }
 
@@ -341,8 +451,8 @@
                 updateWhenZooming: false
             }).addTo(map);
             geoLayerGroup = L.layerGroup().addTo(map);
+            flagMarkers.addTo(map);
             
-            // Désactiver les tooltips pendant le déplacement de la carte
             map.on('movestart', function() {
                 map.closePopup();
                 map.eachLayer(function(layer) {
@@ -352,7 +462,14 @@
                 });
             });
             
+            map.on('click', function(e) {
+                if (flagMode) {
+                    addFlag(e.latlng);
+                }
+            });
+            
             loadGeoData();
+            displayFlags();
         }
 
         async function loadGeoData() {
@@ -474,6 +591,11 @@
                     var cp = cps[i];
                     var cpData = geoDataCache[cp];
                     var zone = zones[cp];
+                    
+                    if (zone && !activeZoneFilters[zone.name]) {
+                        continue;
+                    }
+                    
                     var color = zone ? zone.color : "#e5e7eb";
                     
                     for (var j = 0; j < cpData.geometries.length; j++) {
@@ -499,8 +621,10 @@
                             },
                             onEachFeature: (function(cpClosure, communeClosure, zoneClosure, colorClosure) {
                                 return function(f, l) {
-                                    l.on("click", function() {
-                                        togglePostalCode(cpClosure);
+                                    l.on("click", function(e) {
+                                        if (!flagMode) {
+                                            togglePostalCode(cpClosure);
+                                        }
                                     });
                                     l.bindTooltip("<strong>" + communeClosure + "</strong><br/>CP: " + cpClosure + 
                                         (zoneClosure ? "<br/><span style='color:" + colorClosure + ";font-weight:bold;'>" + zoneClosure.name + "</span>" : ""),
@@ -525,6 +649,111 @@
 
         function updateMapColors() {
             displayGeoData();
+        }
+
+        function setFlagMode(type) {
+            flagMode = type;
+            document.getElementById("flagModeInfo").classList.remove("hidden");
+            document.getElementById("flagPermanence").classList.remove("active");
+            document.getElementById("flagAgence").classList.remove("active");
+            if (type === "permanence") {
+                document.getElementById("flagPermanence").classList.add("active");
+            } else {
+                document.getElementById("flagAgence").classList.add("active");
+            }
+            if (map) map.getContainer().style.cursor = "crosshair";
+        }
+
+        function disableFlagMode() {
+            flagMode = null;
+            document.getElementById("flagModeInfo").classList.add("hidden");
+            document.getElementById("flagPermanence").classList.remove("active");
+            document.getElementById("flagAgence").classList.remove("active");
+            if (map) map.getContainer().style.cursor = "";
+        }
+
+        function addFlag(latlng) {
+            var name = document.getElementById("flagName").value || "Sans nom";
+            var flag = {
+                id: Date.now(),
+                type: flagMode,
+                name: name,
+                lat: latlng.lat,
+                lng: latlng.lng
+            };
+            flags.push(flag);
+            saveToStorage();
+            displayFlags();
+            updateFlagList();
+            document.getElementById("flagName").value = "";
+        }
+
+        function displayFlags() {
+            if (!map) return;
+            flagMarkers.clearLayers();
+            
+            for (var i = 0; i < flags.length; i++) {
+                var flag = flags[i];
+                var color = flag.type === "permanence" ? "#FF1744" : "#2962FF";
+                var icon = flag.type === "permanence" ? "📍" : "🏢";
+                
+                var customIcon = L.divIcon({
+                    className: 'custom-flag-marker',
+                    html: '<div style="font-size:32px;text-shadow:2px 2px 4px rgba(0,0,0,0.5);">' + icon + '</div>',
+                    iconSize: [32, 32],
+                    iconAnchor: [16, 32]
+                });
+                
+                var marker = L.marker([flag.lat, flag.lng], {icon: customIcon});
+                marker.bindPopup("<strong>" + (flag.type === "permanence" ? "📍 Permanence" : "🏢 Agence") + 
+                    "</strong><br/>" + flag.name);
+                marker.on('click', function() {
+                    this.openPopup();
+                });
+                flagMarkers.addLayer(marker);
+            }
+        }
+
+        function updateFlagList() {
+            var container = document.getElementById("flagList");
+            container.innerHTML = "";
+            
+            if (flags.length === 0) {
+                container.innerHTML = '<p style="color:#6b7280;font-size:13px;">Aucun drapeau placé</p>';
+                return;
+            }
+            
+            var fragment = document.createDocumentFragment();
+            for (var i = 0; i < flags.length; i++) {
+                var flag = flags[i];
+                var div = document.createElement("div");
+                div.className = "flag-item";
+                div.style.backgroundColor = flag.type === "permanence" ? "#ffcdd2" : "#bbdefb";
+                
+                var icon = flag.type === "permanence" ? "📍" : "🏢";
+                var span = document.createElement("span");
+                span.textContent = icon + " " + flag.name;
+                span.style.fontWeight = "500";
+                
+                var btn = document.createElement("button");
+                btn.className = "flag-delete";
+                btn.textContent = "Supprimer";
+                btn.onclick = (function(flagId) {
+                    return function() { deleteFlag(flagId); };
+                })(flag.id);
+                
+                div.appendChild(span);
+                div.appendChild(btn);
+                fragment.appendChild(div);
+            }
+            container.appendChild(fragment);
+        }
+
+        function deleteFlag(flagId) {
+            flags = flags.filter(function(f) { return f.id !== flagId; });
+            saveToStorage();
+            displayFlags();
+            updateFlagList();
         }
 
         function exportData() {
@@ -570,7 +799,8 @@
                 version: "1.0",
                 date: new Date().toISOString(),
                 zones: zones,
-                postalData: postalData
+                postalData: postalData,
+                flags: flags
             };
             
             var json = JSON.stringify(exportData, null, 2);
@@ -607,17 +837,22 @@
                     
                     zones = importData.zones;
                     postalData = importData.postalData;
+                    flags = importData.flags || [];
                     
                     saveToStorage();
                     showMainSection();
                     updatePostalGrid();
                     updateStats();
+                    initZoneFilters();
                     
                     if (map && geoDataCache) {
                         updateMapColors();
+                        displayFlags();
                     }
                     
-                    alert("✅ Configuration importée avec succès !\n\n" + Object.keys(zones).length + " codes postaux colorés ont été restaurés.");
+                    updateFlagList();
+                    
+                    alert("✅ Configuration importée avec succès !\n\n" + Object.keys(zones).length + " codes postaux colorés et " + flags.length + " drapeaux ont été restaurés.");
                     
                 } catch (error) {
                     alert("❌ Erreur lors de l'import du fichier JSON.\n\nAssurez-vous que le fichier n'est pas corrompu.");
@@ -630,12 +865,18 @@
         }
 
         function clearAll() {
-            if (confirm("Effacer toutes les zones colorées ?")) {
+            if (confirm("Effacer toutes les zones colorées ET tous les drapeaux ?")) {
                 zones = {};
+                flags = [];
                 saveToStorage();
                 updatePostalGrid();
                 updateStats();
-                if (map && geoDataCache) updateMapColors();
+                initZoneFilters();
+                if (map && geoDataCache) {
+                    updateMapColors();
+                    displayFlags();
+                }
+                updateFlagList();
             }
         }
 
@@ -643,6 +884,7 @@
             if (confirm("Voulez-vous recharger un nouveau fichier CSV ? Cela effacera les données actuelles.")) {
                 postalData = [];
                 zones = {};
+                flags = [];
                 geoDataCache = null;
                 localStorage.clear();
                 document.getElementById("uploadSection").classList.remove("hidden");
@@ -654,6 +896,7 @@
                     map.remove();
                     map = null;
                     geoLayerGroup = null;
+                    flagMarkers = L.layerGroup();
                 }
             }
         }
@@ -674,6 +917,7 @@
             try {
                 localStorage.setItem("postalData", JSON.stringify(postalData));
                 localStorage.setItem("zones", JSON.stringify(zones));
+                localStorage.setItem("flags", JSON.stringify(flags));
             } catch(e) {
                 console.log("Erreur sauvegarde");
             }
@@ -683,6 +927,7 @@
             try {
                 var savedData = localStorage.getItem("postalData");
                 var savedZones = localStorage.getItem("zones");
+                var savedFlags = localStorage.getItem("flags");
                 
                 if (savedData) {
                     postalData = JSON.parse(savedData);
@@ -693,6 +938,10 @@
                     zones = JSON.parse(savedZones);
                     updatePostalGrid();
                     updateStats();
+                }
+                if (savedFlags) {
+                    flags = JSON.parse(savedFlags);
+                    updateFlagList();
                 }
             } catch(e) {
                 console.log("Erreur chargement");
