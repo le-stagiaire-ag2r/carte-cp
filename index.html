@@ -137,15 +137,16 @@
                 <h3 style="margin-bottom: 12px;">🚩 Gestion des drapeaux</h3>
                 <div class="flag-controls">
                     <button class="flag-mode-btn" id="flagPermanenceActive" style="background:#FF1744;color:white;" onclick="setFlagMode('permanence_active')">
-                        🔴 Permanence Active
+                        🚩 Permanence Active
                     </button>
                     <button class="flag-mode-btn" id="flagPermanenceInactive" style="background:#2962FF;color:white;" onclick="setFlagMode('permanence_inactive')">
-                        🔵 Permanence Inactive
+                        🏁 Permanence Inactive
                     </button>
                     <button class="flag-mode-btn" id="flagAgence" style="background:#FF9800;color:white;" onclick="setFlagMode('agence')">
                         🏢 Agence
                     </button>
                     <button class="btn-red" onclick="disableFlagMode()">❌ Annuler</button>
+                    <button class="btn-purple" onclick="toggleZonesVisibility()">👁️ Masquer/Afficher Zones</button>
                     <input type="text" id="flagName" placeholder="Nom du drapeau..." style="flex: 1; min-width: 200px;">
                 </div>
                 <div id="flagModeInfo" class="hidden" style="background:#fff3cd;padding:8px;border-radius:4px;margin-bottom:8px;font-size:13px;">
@@ -196,6 +197,7 @@
         var flagMarkers = L.layerGroup();
         var flagCircles = L.layerGroup();
         var activeZoneFilters = {};
+        var zonesVisible = true;
 
         var colors = [
             {name:"Rouge",hex:"#FF6B6B"},{name:"Orange",hex:"#FFA07A"},{name:"Jaune",hex:"#FFD93D"},
@@ -714,11 +716,11 @@
                 
                 if (flag.type === "permanence_active") {
                     color = "#FF1744";
-                    icon = "🔴";
+                    icon = "🚩";
                     label = "Permanence Active";
                 } else if (flag.type === "permanence_inactive") {
                     color = "#2962FF";
-                    icon = "🔵";
+                    icon = "🏁";
                     label = "Permanence Inactive";
                 } else if (flag.type === "agence") {
                     color = "#FF9800";
@@ -731,7 +733,7 @@
                     color: color,
                     fillColor: color,
                     fillOpacity: 0.15,
-                    radius: 20000, // 20km en mètres
+                    radius: 20000,
                     weight: 3,
                     dashArray: '10, 10',
                     pane: 'overlayPane'
@@ -773,10 +775,10 @@
                 
                 var icon, bgColor;
                 if (flag.type === "permanence_active") {
-                    icon = "🔴";
+                    icon = "🚩";
                     bgColor = "#ffcdd2";
                 } else if (flag.type === "permanence_inactive") {
-                    icon = "🔵";
+                    icon = "🏁";
                     bgColor = "#bbdefb";
                 } else if (flag.type === "agence") {
                     icon = "🏢";
@@ -801,6 +803,17 @@
                 fragment.appendChild(div);
             }
             container.appendChild(fragment);
+        }
+
+        function toggleZonesVisibility() {
+            zonesVisible = !zonesVisible;
+            if (map && geoLayerGroup) {
+                if (zonesVisible) {
+                    map.addLayer(geoLayerGroup);
+                } else {
+                    map.removeLayer(geoLayerGroup);
+                }
+            }
         }
 
         function deleteFlag(flagId) {
