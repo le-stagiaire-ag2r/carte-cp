@@ -49,6 +49,10 @@
         .flag-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; margin-top: 12px; }
         .flag-item { padding: 10px; border: 2px solid #000; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; }
         .flag-delete { background: #ef4444; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+        .flag-filters { background: #fff; border: 2px solid #fbbf24; padding: 12px; border-radius: 6px; margin-top: 12px; }
+        .flag-filter-checkboxes { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 8px; }
+        .flag-filter-item { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+        .flag-filter-item input[type="checkbox"] { cursor: pointer; width: 18px; height: 18px; }
         .zone-filter { background: #e0e7ff; border: 2px solid #818cf8; padding: 16px; border-radius: 8px; margin-bottom: 16px; }
         .zone-checkboxes { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; margin-top: 12px; }
         .zone-checkbox-item { display: flex; align-items: center; gap: 8px; padding: 8px; background: white; border-radius: 6px; cursor: pointer; }
@@ -145,10 +149,30 @@
                     <button class="btn-green" id="addFlagBtn" onclick="enableFlagMode()">➕ Ajouter Drapeau</button>
                     <button class="btn-red hidden" id="cancelFlagBtn" onclick="disableFlagMode()">❌ Annuler</button>
                     <button class="btn-purple" onclick="toggleZonesVisibility()">👁️ Masquer/Afficher Zones</button>
+                    <button class="btn-purple" onclick="toggleRayonsVisibility()">⭕ Masquer/Afficher Rayons</button>
                 </div>
                 <div id="flagModeInfo" class="hidden" style="background:#fff3cd;padding:8px;border-radius:4px;margin-bottom:8px;font-size:13px;">
                     <strong>Mode placement activé :</strong> Cliquez sur la carte pour placer le drapeau (rayon de 20km automatique)
                 </div>
+                
+                <div class="flag-filters">
+                    <h4 style="margin-bottom: 8px; font-size: 14px;">🎯 Filtrer les rayons par type :</h4>
+                    <div class="flag-filter-checkboxes">
+                        <label class="flag-filter-item">
+                            <input type="checkbox" id="filterPermanenceActive" checked onchange="toggleRayonType('permanence_active')">
+                            <span>🚩 Permanences Actives</span>
+                        </label>
+                        <label class="flag-filter-item">
+                            <input type="checkbox" id="filterPermanenceInactive" checked onchange="toggleRayonType('permanence_inactive')">
+                            <span>🏁 Permanences Inactives</span>
+                        </label>
+                        <label class="flag-filter-item">
+                            <input type="checkbox" id="filterAgence" checked onchange="toggleRayonType('agence')">
+                            <span>🏢 Agences</span>
+                        </label>
+                    </div>
+                </div>
+                
                 <div class="flag-list" id="flagList"></div>
             </div>
             
@@ -196,6 +220,12 @@
         var activeZoneFilters = {};
         var zonesVisible = true;
         var editingFlagId = null;
+        var rayonsVisible = true;
+        var visibleRayonTypes = {
+            permanence_active: true,
+            permanence_inactive: true,
+            agence: true
+        };
 
         var colors = [
             {name:"Rouge",hex:"#FF6B6B"},{name:"Orange",hex:"#FFA07A"},{name:"Jaune",hex:"#FFD93D"},
@@ -773,20 +803,22 @@
                     label = "Agence";
                 }
                 
-                // Cercle de 20km - avec interactive: false pour ne pas bloquer les tooltips
-                var circle = L.circle([flag.lat, flag.lng], {
-                    color: color,
-                    fillColor: color,
-                    fillOpacity: 0.15,
-                    radius: 20000,
-                    weight: 3,
-                    dashArray: '10, 10',
-                    pane: 'overlayPane',
-                    interactive: false
-                });
-                flagCircles.addLayer(circle);
+                // Afficher le cercle seulement si les rayons sont visibles ET si ce type est activé
+                if (rayonsVisible && visibleRayonTypes[flag.type]) {
+                    var circle = L.circle([flag.lat, flag.lng], {
+                        color: color,
+                        fillColor: color,
+                        fillOpacity: 0.15,
+                        radius: 20000,
+                        weight: 3,
+                        dashArray: '10, 10',
+                        pane: 'overlayPane',
+                        interactive: false
+                    });
+                    flagCircles.addLayer(circle);
+                }
                 
-                // Marqueur drapeau
+                // Marqueur toujours visible
                 var customIcon = L.divIcon({
                     className: 'custom-flag-marker',
                     html: '<div style="font-size:32px;text-shadow:2px 2px 4px rgba(0,0,0,0.5);">' + icon + '</div>',
@@ -883,6 +915,16 @@
                     map.removeLayer(geoLayerGroup);
                 }
             }
+        }
+
+        function toggleRayonsVisibility() {
+            rayonsVisible = !rayonsVisible;
+            displayFlags();
+        }
+
+        function toggleRayonType(type) {
+            visibleRayonTypes[type] = !visibleRayonTypes[type];
+            displayFlags();
         }
 
         function deleteFlag(flagId) {
