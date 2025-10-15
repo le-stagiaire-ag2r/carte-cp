@@ -136,21 +136,18 @@
             <div class="flag-section">
                 <h3 style="margin-bottom: 12px;">🚩 Gestion des drapeaux</h3>
                 <div class="flag-controls">
-                    <button class="flag-mode-btn" id="flagPermanenceActive" style="background:#FF1744;color:white;" onclick="setFlagMode('permanence_active')">
-                        🚩 Permanence Active
-                    </button>
-                    <button class="flag-mode-btn" id="flagPermanenceInactive" style="background:#2962FF;color:white;" onclick="setFlagMode('permanence_inactive')">
-                        🏁 Permanence Inactive
-                    </button>
-                    <button class="flag-mode-btn" id="flagAgence" style="background:#FF9800;color:white;" onclick="setFlagMode('agence')">
-                        🏢 Agence
-                    </button>
-                    <button class="btn-red" onclick="disableFlagMode()">❌ Annuler</button>
-                    <button class="btn-purple" onclick="toggleZonesVisibility()">👁️ Masquer/Afficher Zones</button>
+                    <select id="flagTypeSelect" style="padding: 10px; border-radius: 6px; border: 2px solid #000; font-weight: bold;">
+                        <option value="permanence_active">🚩 Permanence Active</option>
+                        <option value="permanence_inactive">🏁 Permanence Inactive</option>
+                        <option value="agence">🏢 Agence</option>
+                    </select>
                     <input type="text" id="flagName" placeholder="Nom du drapeau..." style="flex: 1; min-width: 200px;">
+                    <button class="btn-green" id="addFlagBtn" onclick="enableFlagMode()">➕ Ajouter Drapeau</button>
+                    <button class="btn-red hidden" id="cancelFlagBtn" onclick="disableFlagMode()">❌ Annuler</button>
+                    <button class="btn-purple" onclick="toggleZonesVisibility()">👁️ Masquer/Afficher Zones</button>
                 </div>
                 <div id="flagModeInfo" class="hidden" style="background:#fff3cd;padding:8px;border-radius:4px;margin-bottom:8px;font-size:13px;">
-                    <strong>Mode placement activé :</strong> Cliquez sur la carte pour placer un drapeau (rayon de 20km automatique)
+                    <strong>Mode placement activé :</strong> Cliquez sur la carte pour placer le drapeau (rayon de 20km automatique)
                 </div>
                 <div class="flag-list" id="flagList"></div>
             </div>
@@ -193,11 +190,12 @@
         var geoDataCache = null;
         var isLoadingGeo = false;
         var flags = [];
-        var flagMode = null;
+        var flagMode = false;
         var flagMarkers = L.layerGroup();
         var flagCircles = L.layerGroup();
         var activeZoneFilters = {};
         var zonesVisible = true;
+        var editingFlagId = null;
 
         var colors = [
             {name:"Rouge",hex:"#FF6B6B"},{name:"Orange",hex:"#FFA07A"},{name:"Jaune",hex:"#FFD93D"},
@@ -662,47 +660,94 @@
             displayGeoData();
         }
 
-        function setFlagMode(type) {
-            flagMode = type;
+        function enableFlagMode() {
+            flagMode = true;
+            editingFlagId = null;
             document.getElementById("flagModeInfo").classList.remove("hidden");
-            document.getElementById("flagPermanenceActive").classList.remove("active");
-            document.getElementById("flagPermanenceInactive").classList.remove("active");
-            document.getElementById("flagAgence").classList.remove("active");
-            
-            if (type === "permanence_active") {
-                document.getElementById("flagPermanenceActive").classList.add("active");
-            } else if (type === "permanence_inactive") {
-                document.getElementById("flagPermanenceInactive").classList.add("active");
-            } else if (type === "agence") {
-                document.getElementById("flagAgence").classList.add("active");
-            }
-            
+            document.getElementById("addFlagBtn").classList.add("hidden");
+            document.getElementById("cancelFlagBtn").classList.remove("hidden");
             if (map) map.getContainer().style.cursor = "crosshair";
         }
 
         function disableFlagMode() {
-            flagMode = null;
+            flagMode = false;
+            editingFlagId = null;
             document.getElementById("flagModeInfo").classList.add("hidden");
-            document.getElementById("flagPermanenceActive").classList.remove("active");
-            document.getElementById("flagPermanenceInactive").classList.remove("active");
-            document.getElementById("flagAgence").classList.remove("active");
+            document.getElementById("addFlagBtn").classList.remove("hidden");
+            document.getElementById("cancelFlagBtn").classList.add("hidden");
+            document.getElementById("flagName").value = "";
             if (map) map.getContainer().style.cursor = "";
         }
 
-        function addFlag(latlng) {
-            var name = document.getElementById("flagName").value || "Sans nom";
-            var flag = {
-                id: Date.now(),
-                type: flagMode,
-                name: name,
-                lat: latlng.lat,
-                lng: latlng.lng
-            };
-            flags.push(flag);
+        function editFlag(flagId) {
+            var flag = flags.find(function(f) { return f.id === flagId; });
+            if (!flag) return;
+            
+            document.getElementById("flagTypeSelect").value = flag.type;
+            document.getElementById("flagName").value = flag.name;
+            editingFlagId = flagId;
+            flagMode = true;
+            
+            document.getElementById("flagModeInfo").innerHTML = '<strong>Mode édition :</strong> Cliquez sur la carte pour repositionner "' + flag.name + '" ou modifiez les champs et cliquez sur Sauvegarder';
+            document.getElementById("flagModeInfo").classList.remove("hidden");
+            document.getElementById("addFlagBtn").textContent = "💾 Sauvegarder";
+            document.getElementById("addFlagBtn").onclick = function() { saveEditedFlag(); };
+            document.getElementById("addFlagBtn").classList.remove("hidden");
+            document.getElementById("cancelFlagBtn").classList.remove("hidden");
+            
+            if (map) map.getContainer().style.cursor = "crosshair";
+        }
+
+        function saveEditedFlag() {
+            if (!editingFlagId) return;
+            
+            var flag = flags.find(function(f) { return f.id === editingFlagId; });
+            if (!flag) return;
+            
+            flag.type = document.getElementById("flagTypeSelect").value;
+            flag.name = document.getElementById("flagName").value || "Sans nom";
+            
             saveToStorage();
             displayFlags();
             updateFlagList();
-            document.getElementById("flagName").value = "";
+            
+            document.getElementById("addFlagBtn").textContent = "➕ Ajouter Drapeau";
+            document.getElementById("addFlagBtn").onclick = function() { enableFlagMode(); };
+            disableFlagMode();
+        }
+
+        function addFlag(latlng) {
+            var type = document.getElementById("flagTypeSelect").value;
+            var name = document.getElementById("flagName").value || "Sans nom";
+            
+            if (editingFlagId) {
+                // Mode édition : repositionner le drapeau
+                var flag = flags.find(function(f) { return f.id === editingFlagId; });
+                if (flag) {
+                    flag.lat = latlng.lat;
+                    flag.lng = latlng.lng;
+                    flag.type = type;
+                    flag.name = name;
+                }
+                
+                document.getElementById("addFlagBtn").textContent = "➕ Ajouter Drapeau";
+                document.getElementById("addFlagBtn").onclick = function() { enableFlagMode(); };
+            } else {
+                // Mode ajout : nouveau drapeau
+                var flag = {
+                    id: Date.now(),
+                    type: type,
+                    name: name,
+                    lat: latlng.lat,
+                    lng: latlng.lng
+                };
+                flags.push(flag);
+            }
+            
+            saveToStorage();
+            displayFlags();
+            updateFlagList();
+            disableFlagMode();
         }
 
         function displayFlags() {
@@ -728,7 +773,7 @@
                     label = "Agence";
                 }
                 
-                // Ajouter un cercle de 20km autour du drapeau
+                // Cercle de 20km - avec interactive: false pour ne pas bloquer les tooltips
                 var circle = L.circle([flag.lat, flag.lng], {
                     color: color,
                     fillColor: color,
@@ -736,11 +781,12 @@
                     radius: 20000,
                     weight: 3,
                     dashArray: '10, 10',
-                    pane: 'overlayPane'
+                    pane: 'overlayPane',
+                    interactive: false
                 });
                 flagCircles.addLayer(circle);
                 
-                // Ajouter le marqueur drapeau
+                // Marqueur drapeau
                 var customIcon = L.divIcon({
                     className: 'custom-flag-marker',
                     html: '<div style="font-size:32px;text-shadow:2px 2px 4px rgba(0,0,0,0.5);">' + icon + '</div>',
@@ -751,9 +797,11 @@
                 var marker = L.marker([flag.lat, flag.lng], {icon: customIcon});
                 marker.bindPopup("<strong>" + icon + " " + label + 
                     "</strong><br/>" + flag.name + "<br/><small style='color:#666;'>Rayon: 20km</small>");
-                marker.on('click', function() {
-                    this.openPopup();
-                });
+                marker.on('click', (function(flagId) {
+                    return function() {
+                        this.openPopup();
+                    };
+                })(flag.id));
                 flagMarkers.addLayer(marker);
             }
         }
@@ -790,16 +838,37 @@
                 var span = document.createElement("span");
                 span.innerHTML = icon + " " + flag.name + " <small style='color:#666;'>(20km)</small>";
                 span.style.fontWeight = "500";
+                span.style.flex = "1";
+                span.style.cursor = "pointer";
+                span.onclick = (function(flagId) {
+                    return function() { editFlag(flagId); };
+                })(flag.id);
+                span.title = "Cliquer pour modifier";
                 
-                var btn = document.createElement("button");
-                btn.className = "flag-delete";
-                btn.textContent = "Supprimer";
-                btn.onclick = (function(flagId) {
+                var btnContainer = document.createElement("div");
+                btnContainer.style.display = "flex";
+                btnContainer.style.gap = "8px";
+                
+                var editBtn = document.createElement("button");
+                editBtn.className = "flag-delete";
+                editBtn.style.background = "#3b82f6";
+                editBtn.textContent = "Modifier";
+                editBtn.onclick = (function(flagId) {
+                    return function() { editFlag(flagId); };
+                })(flag.id);
+                
+                var deleteBtn = document.createElement("button");
+                deleteBtn.className = "flag-delete";
+                deleteBtn.textContent = "Supprimer";
+                deleteBtn.onclick = (function(flagId) {
                     return function() { deleteFlag(flagId); };
                 })(flag.id);
                 
+                btnContainer.appendChild(editBtn);
+                btnContainer.appendChild(deleteBtn);
+                
                 div.appendChild(span);
-                div.appendChild(btn);
+                div.appendChild(btnContainer);
                 fragment.appendChild(div);
             }
             container.appendChild(fragment);
