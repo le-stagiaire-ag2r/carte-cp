@@ -77,14 +77,14 @@
             
             <div id="mainSection" class="hidden">
                 <div class="btn-group">
-                    <button class="btn-green" id="toggleViewBtn" onclick="toggleView()">Vue Carte / Liste</button>
-                    <button class="btn-blue" onclick="exportData()">⬇️ Exporter TXT</button>
-                    <button class="btn-blue" onclick="exportJSON()">⬇️ Exporter JSON</button>
+                    <button class="btn-green" id="toggleViewBtn" onclick="app.toggleView()">Vue Carte / Liste</button>
+                    <button class="btn-blue" onclick="app.exportData()">⬇️ Exporter TXT</button>
+                    <button class="btn-blue" onclick="app.exportJSON()">⬇️ Exporter JSON</button>
                     <button class="btn-blue" onclick="document.getElementById('importJSON').click()">⬆️ Importer JSON</button>
-                    <input type="file" id="importJSON" accept=".json" style="display:none;" onchange="importJSON(event)">
-                    <button class="btn-purple" onclick="reloadCSV()">📁 Recharger CSV</button>
-                    <button class="btn-purple" onclick="reloadMap()">🗺️ Recharger Carte</button>
-                    <button class="btn-red" onclick="clearAll()">🗑️ Effacer tout</button>
+                    <input type="file" id="importJSON" accept=".json" style="display:none;" onchange="app.importJSON(event)">
+                    <button class="btn-purple" onclick="app.reloadCSV()">📁 Recharger CSV</button>
+                    <button class="btn-purple" onclick="app.reloadMap()">🗺️ Recharger Carte</button>
+                    <button class="btn-red" onclick="app.clearAll()">🗑️ Effacer tout</button>
                     <div class="stats" id="stats"></div>
                 </div>
                 
@@ -146,10 +146,10 @@
                         <option value="agence">🏢 Agence</option>
                     </select>
                     <input type="text" id="flagName" placeholder="Nom du drapeau..." style="flex: 1; min-width: 200px;">
-                    <button class="btn-green" id="addFlagBtn" onclick="enableFlagMode()">➕ Ajouter Drapeau</button>
-                    <button class="btn-red hidden" id="cancelFlagBtn" onclick="disableFlagMode()">❌ Annuler</button>
-                    <button class="btn-purple" onclick="toggleZonesVisibility()">👁️ Masquer/Afficher Zones</button>
-                    <button class="btn-purple" onclick="toggleRayonsVisibility()">⭕ Masquer/Afficher Rayons</button>
+                    <button class="btn-green" id="addFlagBtn" onclick="app.enableFlagMode()">➕ Ajouter Drapeau</button>
+                    <button class="btn-red hidden" id="cancelFlagBtn" onclick="app.disableFlagMode()">❌ Annuler</button>
+                    <button class="btn-purple" onclick="app.toggleZonesVisibility()">👁️ Masquer/Afficher Zones</button>
+                    <button class="btn-purple" onclick="app.toggleRayonsVisibility()">⭕ Masquer/Afficher Rayons</button>
                 </div>
                 <div id="flagModeInfo" class="hidden" style="background:#fff3cd;padding:8px;border-radius:4px;margin-bottom:8px;font-size:13px;">
                     <strong>Mode placement activé :</strong> Cliquez sur la carte pour placer le drapeau (rayon de 20km automatique)
@@ -159,15 +159,15 @@
                     <h4 style="margin-bottom: 8px; font-size: 14px;">🎯 Filtrer les rayons par type :</h4>
                     <div class="flag-filter-checkboxes">
                         <label class="flag-filter-item">
-                            <input type="checkbox" id="filterPermanenceActive" checked onchange="toggleRayonType('permanence_active')">
+                            <input type="checkbox" id="filterPermanenceActive" checked onchange="app.toggleRayonType('permanence_active')">
                             <span>🚩 Permanences Actives</span>
                         </label>
                         <label class="flag-filter-item">
-                            <input type="checkbox" id="filterPermanenceInactive" checked onchange="toggleRayonType('permanence_inactive')">
+                            <input type="checkbox" id="filterPermanenceInactive" checked onchange="app.toggleRayonType('permanence_inactive')">
                             <span>🏁 Permanences Inactives</span>
                         </label>
                         <label class="flag-filter-item">
-                            <input type="checkbox" id="filterAgence" checked onchange="toggleRayonType('agence')">
+                            <input type="checkbox" id="filterAgence" checked onchange="app.toggleRayonType('agence')">
                             <span>🏢 Agences</span>
                         </label>
                     </div>
@@ -205,927 +205,999 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        var postalData = [];
-        var zones = {};
-        var selectedColor = "#FF6B6B";
-        var currentView = "list";
-        var map = null;
-        var geoLayerGroup = null;
-        var geoDataCache = null;
-        var isLoadingGeo = false;
-        var flags = [];
-        var flagMode = false;
-        var flagMarkers = L.layerGroup();
-        var flagCircles = L.layerGroup();
-        var activeZoneFilters = {};
-        var zonesVisible = true;
-        var editingFlagId = null;
-        var rayonsVisible = true;
-        var visibleRayonTypes = {
-            permanence_active: true,
-            permanence_inactive: true,
-            agence: true
+        // ============================================
+        // CONFIGURATION & DONNÉES
+        // ============================================
+        
+        const CONFIG = {
+            colors: [
+                {name:"Rouge",hex:"#FF6B6B"},{name:"Orange",hex:"#FFA07A"},{name:"Jaune",hex:"#FFD93D"},
+                {name:"Vert clair",hex:"#6BCF7F"},{name:"Vert",hex:"#2ECC71"},{name:"Turquoise",hex:"#4ECDC4"},
+                {name:"Bleu clair",hex:"#74B9FF"},{name:"Bleu",hex:"#3498DB"},{name:"Violet",hex:"#A29BFE"},
+                {name:"Rose",hex:"#FD79A8"},{name:"Magenta",hex:"#E056FD"},{name:"Marron",hex:"#B8860B"},
+                {name:"Gris",hex:"#95A5A6"},{name:"Noir",hex:"#2C3E50"},{name:"Blanc",hex:"#FFFFFF"}
+            ],
+            
+            departments: {
+                "02":"Aisne","59":"Nord","60":"Oise","62":"Pas-de-Calais","80":"Somme",
+                "14":"Calvados","27":"Eure","50":"Manche","61":"Orne","76":"Seine-Maritime"
+            },
+            
+            flagTypes: {
+                permanence_active: { color: "#FF1744", icon: "🚩", label: "Permanence Active", bg: "#ffcdd2" },
+                permanence_inactive: { color: "#2962FF", icon: "🏁", label: "Permanence Inactive", bg: "#bbdefb" },
+                agence: { color: "#FF9800", icon: "🏢", label: "Agence", bg: "#ffe0b2" }
+            }
         };
 
-        var colors = [
-            {name:"Rouge",hex:"#FF6B6B"},{name:"Orange",hex:"#FFA07A"},{name:"Jaune",hex:"#FFD93D"},
-            {name:"Vert clair",hex:"#6BCF7F"},{name:"Vert",hex:"#2ECC71"},{name:"Turquoise",hex:"#4ECDC4"},
-            {name:"Bleu clair",hex:"#74B9FF"},{name:"Bleu",hex:"#3498DB"},{name:"Violet",hex:"#A29BFE"},
-            {name:"Rose",hex:"#FD79A8"},{name:"Magenta",hex:"#E056FD"},{name:"Marron",hex:"#B8860B"},
-            {name:"Gris",hex:"#95A5A6"},{name:"Noir",hex:"#2C3E50"},{name:"Blanc",hex:"#FFFFFF"}
-        ];
+        // ============================================
+        // CLASSE PRINCIPALE
+        // ============================================
+        
+        class CarteZonesApp {
+            constructor() {
+                // État de l'application
+                this.state = {
+                    postalData: [],
+                    zones: {},
+                    flags: [],
+                    selectedColor: "#FF6B6B",
+                    currentView: "list",
+                    activeZoneFilters: {},
+                    zonesVisible: true,
+                    rayonsVisible: true,
+                    visibleRayonTypes: {
+                        permanence_active: true,
+                        permanence_inactive: true,
+                        agence: true
+                    },
+                    flagMode: false,
+                    editingFlagId: null
+                };
 
-        var departments = {
-            "02":"Aisne","59":"Nord","60":"Oise","62":"Pas-de-Calais","80":"Somme",
-            "14":"Calvados","27":"Eure","50":"Manche","61":"Orne","76":"Seine-Maritime"
-        };
+                // Composants carte
+                this.map = null;
+                this.geoLayerGroup = null;
+                this.geoDataCache = null;
+                this.isLoadingGeo = false;
+                this.flagMarkers = L.layerGroup();
+                this.flagCircles = L.layerGroup();
 
-        document.addEventListener("DOMContentLoaded", function() {
-            loadFromStorage();
-            initColorGrid();
-            initZoneFilters();
-            document.getElementById("fileInput").addEventListener("change", handleFileUpload);
-            document.getElementById("searchInput").addEventListener("input", updatePostalGrid);
-            document.getElementById("deptSelect").addEventListener("change", updatePostalGrid);
-        });
-
-        function initColorGrid() {
-            var grid = document.getElementById("colorGrid");
-            var fragment = document.createDocumentFragment();
-            for (var i = 0; i < colors.length; i++) {
-                var color = colors[i];
-                var btn = document.createElement("div");
-                btn.className = "color-btn";
-                btn.style.backgroundColor = color.hex;
-                btn.title = color.name;
-                btn.onclick = (function(c, b) {
-                    return function() { selectColor(c.hex, b); };
-                })(color, btn);
-                if (color.hex === selectedColor) btn.classList.add("selected");
-                fragment.appendChild(btn);
+                this.init();
             }
-            grid.appendChild(fragment);
-        }
 
-        function selectColor(hex, element) {
-            selectedColor = hex;
-            var buttons = document.querySelectorAll(".color-btn");
-            for (var i = 0; i < buttons.length; i++) {
-                buttons[i].classList.remove("selected");
+            // ============================================
+            // INITIALISATION
+            // ============================================
+            
+            init() {
+                this.loadFromStorage();
+                this.initColorGrid();
+                this.initZoneFilters();
+                this.attachEventListeners();
             }
-            element.classList.add("selected");
-        }
 
-        function handleFileUpload(event) {
-            var file = event.target.files[0];
-            if (!file) return;
-            
-            var reader = new FileReader();
-            reader.onload = function(e) {
-                parseCSV(e.target.result);
-            };
-            reader.readAsText(file);
-        }
+            attachEventListeners() {
+                document.getElementById("fileInput").addEventListener("change", (e) => this.handleFileUpload(e));
+                document.getElementById("searchInput").addEventListener("input", () => this.updatePostalGrid());
+                document.getElementById("deptSelect").addEventListener("change", () => this.updatePostalGrid());
+            }
 
-        function parseCSV(text) {
-            var lines = text.split("\n");
-            postalData = [];
+            // ============================================
+            // GESTION DES COULEURS
+            // ============================================
             
-            for (var i = 1; i < lines.length; i++) {
-                var line = lines[i].trim();
-                if (!line) continue;
+            initColorGrid() {
+                const grid = document.getElementById("colorGrid");
+                const fragment = document.createDocumentFragment();
                 
-                var parts = line.split(";");
-                if (parts.length >= 2) {
-                    var commune = parts[0].trim();
-                    var cp = parts[1].trim();
+                CONFIG.colors.forEach(color => {
+                    const btn = document.createElement("div");
+                    btn.className = "color-btn";
+                    btn.style.backgroundColor = color.hex;
+                    btn.title = color.name;
+                    btn.onclick = () => this.selectColor(color.hex, btn);
                     
-                    if (cp.length === 4 && !isNaN(cp)) {
-                        cp = "0" + cp;
+                    if (color.hex === this.state.selectedColor) {
+                        btn.classList.add("selected");
                     }
                     
-                    var dept = cp.substring(0, 2);
-                    if (departments[dept]) {
-                        postalData.push({commune: commune, cp: cp, dept: dept});
-                    }
-                }
-            }
-            
-            saveToStorage();
-            showMainSection();
-            updatePostalGrid();
-        }
-
-        function showMainSection() {
-            document.getElementById("uploadSection").classList.add("hidden");
-            document.getElementById("mainSection").classList.remove("hidden");
-            document.getElementById("listSection").classList.remove("hidden");
-            updateStats();
-        }
-
-        function updateStats() {
-            var assignedCount = Object.keys(zones).length;
-            document.getElementById("stats").textContent = postalData.length + " communes • " + assignedCount + " codes postaux colorés";
-        }
-
-        function initZoneFilters() {
-            var zoneNames = {};
-            var cpList = Object.keys(zones);
-            for (var i = 0; i < cpList.length; i++) {
-                var zoneName = zones[cpList[i]].name;
-                if (!zoneNames[zoneName]) {
-                    zoneNames[zoneName] = {
-                        color: zones[cpList[i]].color,
-                        count: 0
-                    };
-                }
-                zoneNames[zoneName].count++;
-            }
-            
-            var container = document.getElementById("zoneFilterList");
-            container.innerHTML = "";
-            var sortedZones = Object.keys(zoneNames).sort();
-            
-            if (sortedZones.length === 0) {
-                container.innerHTML = '<p style="color:#6b7280;font-size:13px;">Aucune zone créée pour le moment</p>';
-                return;
-            }
-            
-            var fragment = document.createDocumentFragment();
-            for (var i = 0; i < sortedZones.length; i++) {
-                var zoneName = sortedZones[i];
-                var zoneData = zoneNames[zoneName];
-                
-                if (activeZoneFilters[zoneName] === undefined) {
-                    activeZoneFilters[zoneName] = true;
-                }
-                
-                var label = document.createElement("label");
-                label.className = "zone-checkbox-item";
-                
-                var checkbox = document.createElement("input");
-                checkbox.type = "checkbox";
-                checkbox.checked = activeZoneFilters[zoneName];
-                checkbox.onchange = (function(name) {
-                    return function(e) {
-                        activeZoneFilters[name] = e.target.checked;
-                        updatePostalGrid();
-                        if (map && geoDataCache) updateMapColors();
-                    };
-                })(zoneName);
-                
-                var colorDiv = document.createElement("div");
-                colorDiv.className = "zone-color-indicator";
-                colorDiv.style.backgroundColor = zoneData.color;
-                
-                var text = document.createElement("span");
-                text.style.flex = "1";
-                text.style.fontWeight = "500";
-                text.textContent = zoneName + " (" + zoneData.count + " CP)";
-                
-                label.appendChild(checkbox);
-                label.appendChild(colorDiv);
-                label.appendChild(text);
-                fragment.appendChild(label);
-            }
-            container.appendChild(fragment);
-        }
-
-        function updatePostalGrid() {
-            var search = document.getElementById("searchInput").value.toLowerCase();
-            var dept = document.getElementById("deptSelect").value;
-            
-            var filtered = [];
-            for (var i = 0; i < postalData.length; i++) {
-                var item = postalData[i];
-                var matchDept = dept === "all" || item.dept === dept;
-                var matchSearch = !search || item.commune.toLowerCase().indexOf(search) !== -1 || item.cp.indexOf(search) !== -1;
-                
-                var zone = zones[item.cp];
-                var matchZone = !zone || activeZoneFilters[zone.name];
-                
-                if (matchDept && matchSearch && matchZone) {
-                    filtered.push(item);
-                }
-            }
-
-            var grouped = {};
-            for (var i = 0; i < filtered.length; i++) {
-                var item = filtered[i];
-                if (!grouped[item.cp]) grouped[item.cp] = [];
-                grouped[item.cp].push(item.commune);
-            }
-
-            var grid = document.getElementById("postalGrid");
-            grid.innerHTML = "";
-            var sortedCps = Object.keys(grouped).sort();
-            document.getElementById("postalCount").textContent = sortedCps.length;
-
-            var fragment = document.createDocumentFragment();
-            for (var i = 0; i < sortedCps.length; i++) {
-                var cp = sortedCps[i];
-                var zone = zones[cp];
-                var communes = grouped[cp];
-                var btn = document.createElement("div");
-                btn.className = "postal-btn" + (zone ? " assigned" : "");
-                btn.style.backgroundColor = zone ? zone.color : "#ffffff";
-                btn.style.color = zone && zone.color !== "#FFFFFF" ? "#fff" : "#000";
-                btn.title = communes.join(", ") + "\n" + (zone ? zone.name : "Non attribué");
-                btn.onclick = (function(postal) {
-                    return function() { togglePostalCode(postal); };
-                })(cp);
-                btn.innerHTML = '<div class="postal-code">' + cp + "</div>" + 
-                    (zone ? '<div class="postal-zone">' + zone.name + "</div>" : "");
-                fragment.appendChild(btn);
-            }
-            grid.appendChild(fragment);
-        }
-
-        function togglePostalCode(cp) {
-            var zoneName = document.getElementById("zoneName").value || "Zone sans nom";
-            if (zones[cp] && zones[cp].color === selectedColor) {
-                delete zones[cp];
-            } else {
-                zones[cp] = {color: selectedColor, name: zoneName};
-            }
-            saveToStorage();
-            updatePostalGrid();
-            updateStats();
-            initZoneFilters();
-            if (map && geoDataCache) updateMapColors();
-        }
-
-        function toggleView() {
-            if (currentView === "list") {
-                currentView = "map";
-                document.getElementById("listSection").classList.add("hidden");
-                document.getElementById("mapSection").classList.remove("hidden");
-                if (!map) {
-                    initMap();
-                } else if (!geoDataCache && !isLoadingGeo) {
-                    loadGeoData();
-                }
-            } else {
-                currentView = "list";
-                document.getElementById("mapSection").classList.add("hidden");
-                document.getElementById("listSection").classList.remove("hidden");
-            }
-        }
-
-        function initMap() {
-            map = L.map("map", {
-                preferCanvas: false,
-                renderer: L.svg({ padding: 0.5 })
-            }).setView([49.5, 1.5], 8);
-            
-            L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-                attribution: "© OpenStreetMap",
-                maxZoom: 19,
-                updateWhenIdle: true,
-                updateWhenZooming: false
-            }).addTo(map);
-            
-            // Ordre d'affichage : géométries en bas, cercles au milieu, marqueurs en haut
-            geoLayerGroup = L.layerGroup().addTo(map);
-            flagCircles.addTo(map);
-            flagMarkers.addTo(map);
-            
-            map.on('movestart', function() {
-                map.closePopup();
-                map.eachLayer(function(layer) {
-                    if (layer.closeTooltip) {
-                        layer.closeTooltip();
-                    }
+                    fragment.appendChild(btn);
                 });
-            });
-            
-            map.on('click', function(e) {
-                if (flagMode) {
-                    addFlag(e.latlng);
-                }
-            });
-            
-            loadGeoData();
-            displayFlags();
-        }
-
-        async function loadGeoData() {
-            if (isLoadingGeo) return;
-            isLoadingGeo = true;
-            document.getElementById("loadingSection").classList.remove("hidden");
-            document.getElementById("successSection").classList.add("hidden");
-            document.getElementById("toggleViewBtn").disabled = true;
-
-            var depts = Object.keys(departments);
-            var total = depts.length;
-            var loaded = 0;
-            var cpToGeometry = {};
-
-            for (var i = 0; i < depts.length; i++) {
-                var dept = depts[i];
-                document.getElementById("loadingText").textContent = "Chargement " + dept + "...";
                 
-                try {
-                    var response = await fetch("https://geo.api.gouv.fr/departements/" + dept + "/communes?fields=nom,codesPostaux&format=geojson&geometry=contour");
-                    if (response.ok) {
-                        var data = await response.json();
-                        if (data.features) {
-                            for (var j = 0; j < data.features.length; j++) {
-                                var feature = data.features[j];
-                                var communeName = feature.properties.nom;
-                                var apiCps = feature.properties.codesPostaux || [];
-                                
-                                for (var k = 0; k < apiCps.length; k++) {
-                                    var cp = apiCps[k];
-                                    if (cp.substring(0, 2) === dept) {
-                                        if (!cpToGeometry[cp]) {
-                                            cpToGeometry[cp] = {
-                                                communes: [],
-                                                geometries: []
-                                            };
-                                        }
-                                        
-                                        if (cpToGeometry[cp].communes.indexOf(communeName) === -1) {
-                                            cpToGeometry[cp].communes.push(communeName);
-                                        }
-                                        
-                                        if (feature.geometry && feature.geometry.coordinates) {
-                                            cpToGeometry[cp].geometries.push({
-                                                type: feature.geometry.type,
-                                                coords: simplifyCoordinates(feature.geometry.coordinates, 0.004),
-                                                commune: communeName
-                                            });
-                                        }
-                                        break;
-                                    }
-                                }
-                            }
+                grid.appendChild(fragment);
+            }
+
+            selectColor(hex, element) {
+                this.state.selectedColor = hex;
+                document.querySelectorAll(".color-btn").forEach(btn => btn.classList.remove("selected"));
+                element.classList.add("selected");
+            }
+
+            // ============================================
+            // GESTION DU CSV
+            // ============================================
+            
+            handleFileUpload(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+                
+                const reader = new FileReader();
+                reader.onload = (e) => this.parseCSV(e.target.result);
+                reader.readAsText(file);
+            }
+
+            parseCSV(text) {
+                const lines = text.split("\n");
+                this.state.postalData = [];
+                
+                lines.slice(1).forEach(line => {
+                    const trimmedLine = line.trim();
+                    if (!trimmedLine) return;
+                    
+                    const parts = trimmedLine.split(";");
+                    if (parts.length >= 2) {
+                        const commune = parts[0].trim();
+                        let cp = parts[1].trim();
+                        
+                        // Ajouter le 0 si code postal à 4 chiffres
+                        if (cp.length === 4 && !isNaN(cp)) {
+                            cp = "0" + cp;
+                        }
+                        
+                        const dept = cp.substring(0, 2);
+                        if (CONFIG.departments[dept]) {
+                            this.state.postalData.push({ commune, cp, dept });
                         }
                     }
-                } catch (error) {
-                    console.log("Erreur " + dept);
+                });
+                
+                this.saveToStorage();
+                this.showMainSection();
+                this.updatePostalGrid();
+            }
+
+            // ============================================
+            // AFFICHAGE DES SECTIONS
+            // ============================================
+            
+            showMainSection() {
+                document.getElementById("uploadSection").classList.add("hidden");
+                document.getElementById("mainSection").classList.remove("hidden");
+                document.getElementById("listSection").classList.remove("hidden");
+                this.updateStats();
+            }
+
+            updateStats() {
+                const assignedCount = Object.keys(this.state.zones).length;
+                const totalCommunes = this.state.postalData.length;
+                document.getElementById("stats").textContent = 
+                    `${totalCommunes} communes • ${assignedCount} codes postaux colorés`;
+            }
+
+            // ============================================
+            // FILTRES PAR ZONES
+            // ============================================
+            
+            initZoneFilters() {
+                const zoneNames = {};
+                
+                Object.entries(this.state.zones).forEach(([cp, data]) => {
+                    if (!zoneNames[data.name]) {
+                        zoneNames[data.name] = {
+                            color: data.color,
+                            count: 0
+                        };
+                    }
+                    zoneNames[data.name].count++;
+                });
+                
+                const container = document.getElementById("zoneFilterList");
+                container.innerHTML = "";
+                
+                const sortedZones = Object.keys(zoneNames).sort();
+                
+                if (sortedZones.length === 0) {
+                    container.innerHTML = '<p style="color:#6b7280;font-size:13px;">Aucune zone créée pour le moment</p>';
+                    return;
                 }
                 
-                loaded++;
-                var percent = Math.round((loaded / total) * 100);
-                document.getElementById("progressFill").style.width = percent + "%";
-                document.getElementById("progressFill").textContent = percent + "%";
+                const fragment = document.createDocumentFragment();
                 
-                await new Promise(function(resolve) { setTimeout(resolve, 20); });
-            }
-
-            geoDataCache = cpToGeometry;
-            document.getElementById("loadingSection").classList.add("hidden");
-            document.getElementById("successSection").classList.remove("hidden");
-            setTimeout(function() {
-                document.getElementById("successSection").classList.add("hidden");
-            }, 5000);
-            document.getElementById("toggleViewBtn").disabled = false;
-            isLoadingGeo = false;
-            displayGeoData();
-        }
-
-        function simplifyCoordinates(coords, tolerance) {
-            if (!coords || coords.length === 0) return coords;
-            
-            if (typeof coords[0] === 'number') {
-                return coords;
-            }
-            
-            if (Array.isArray(coords[0]) && typeof coords[0][0] === 'number') {
-                if (coords.length <= 12) return coords;
-                
-                var simplified = [coords[0]];
-                var step = Math.max(2, Math.floor(coords.length / 10));
-                
-                for (var i = step; i < coords.length - 1; i += step) {
-                    simplified.push(coords[i]);
-                }
-                
-                simplified.push(coords[coords.length - 1]);
-                return simplified;
-            }
-            
-            var result = [];
-            for (var i = 0; i < coords.length; i++) {
-                result.push(simplifyCoordinates(coords[i], tolerance));
-            }
-            return result;
-        }
-
-        function displayGeoData() {
-            if (!map || !geoDataCache) return;
-            geoLayerGroup.clearLayers();
-            
-            var cps = Object.keys(geoDataCache);
-            var batchSize = 15;
-            var index = 0;
-            
-            function displayBatch() {
-                var end = Math.min(index + batchSize, cps.length);
-                
-                for (var i = index; i < end; i++) {
-                    var cp = cps[i];
-                    var cpData = geoDataCache[cp];
-                    var zone = zones[cp];
+                sortedZones.forEach(zoneName => {
+                    const zoneData = zoneNames[zoneName];
                     
-                    // Si la zone est décochée, afficher en gris au lieu de masquer
-                    var color;
-                    if (zone && !activeZoneFilters[zone.name]) {
-                        color = "#e5e7eb"; // Gris par défaut (zone décochée)
-                    } else {
-                        color = zone ? zone.color : "#e5e7eb";
+                    if (this.state.activeZoneFilters[zoneName] === undefined) {
+                        this.state.activeZoneFilters[zoneName] = true;
                     }
                     
-                    for (var j = 0; j < cpData.geometries.length; j++) {
-                        var geom = cpData.geometries[j];
-                        var feature = {
-                            type: "Feature",
-                            properties: { 
-                                cp: cp,
-                                commune: geom.commune
-                            },
-                            geometry: {
-                                type: geom.type,
-                                coordinates: geom.coords
-                            }
-                        };
+                    const label = document.createElement("label");
+                    label.className = "zone-checkbox-item";
+                    
+                    const checkbox = document.createElement("input");
+                    checkbox.type = "checkbox";
+                    checkbox.checked = this.state.activeZoneFilters[zoneName];
+                    checkbox.onchange = (e) => {
+                        this.state.activeZoneFilters[zoneName] = e.target.checked;
+                        this.updatePostalGrid();
+                        if (this.map && this.geoDataCache) this.updateMapColors();
+                    };
+                    
+                    const colorDiv = document.createElement("div");
+                    colorDiv.className = "zone-color-indicator";
+                    colorDiv.style.backgroundColor = zoneData.color;
+                    
+                    const text = document.createElement("span");
+                    text.style.flex = "1";
+                    text.style.fontWeight = "500";
+                    text.textContent = `${zoneName} (${zoneData.count} CP)`;
+                    
+                    label.appendChild(checkbox);
+                    label.appendChild(colorDiv);
+                    label.appendChild(text);
+                    fragment.appendChild(label);
+                });
+                
+                container.appendChild(fragment);
+            }
+
+            // ============================================
+            // GRILLE DES CODES POSTAUX
+            // ============================================
+            
+            updatePostalGrid() {
+                const search = document.getElementById("searchInput").value.toLowerCase();
+                const dept = document.getElementById("deptSelect").value;
+                
+                // Filtrer les données
+                const filtered = this.state.postalData.filter(item => {
+                    const matchDept = dept === "all" || item.dept === dept;
+                    const matchSearch = !search || 
+                        item.commune.toLowerCase().includes(search) || 
+                        item.cp.includes(search);
+                    
+                    const zone = this.state.zones[item.cp];
+                    const matchZone = !zone || this.state.activeZoneFilters[zone.name];
+                    
+                    return matchDept && matchSearch && matchZone;
+                });
+
+                // Grouper par code postal
+                const grouped = filtered.reduce((acc, item) => {
+                    if (!acc[item.cp]) acc[item.cp] = [];
+                    acc[item.cp].push(item.commune);
+                    return acc;
+                }, {});
+
+                // Afficher
+                const grid = document.getElementById("postalGrid");
+                grid.innerHTML = "";
+                const sortedCps = Object.keys(grouped).sort();
+                document.getElementById("postalCount").textContent = sortedCps.length;
+
+                const fragment = document.createDocumentFragment();
+                
+                sortedCps.forEach(cp => {
+                    const zone = this.state.zones[cp];
+                    const communes = grouped[cp];
+                    
+                    const btn = document.createElement("div");
+                    btn.className = `postal-btn${zone ? " assigned" : ""}`;
+                    btn.style.backgroundColor = zone ? zone.color : "#ffffff";
+                    btn.style.color = zone && zone.color !== "#FFFFFF" ? "#fff" : "#000";
+                    btn.title = `${communes.join(", ")}\n${zone ? zone.name : "Non attribué"}`;
+                    btn.onclick = () => this.togglePostalCode(cp);
+                    btn.innerHTML = `<div class="postal-code">${cp}</div>` + 
+                        (zone ? `<div class="postal-zone">${zone.name}</div>` : "");
+                    
+                    fragment.appendChild(btn);
+                });
+                
+                grid.appendChild(fragment);
+            }
+
+            togglePostalCode(cp) {
+                const zoneName = document.getElementById("zoneName").value || "Zone sans nom";
+                
+                if (this.state.zones[cp] && this.state.zones[cp].color === this.state.selectedColor) {
+                    delete this.state.zones[cp];
+                } else {
+                    this.state.zones[cp] = { 
+                        color: this.state.selectedColor, 
+                        name: zoneName 
+                    };
+                }
+                
+                this.saveToStorage();
+                this.updatePostalGrid();
+                this.updateStats();
+                this.initZoneFilters();
+                
+                if (this.map && this.geoDataCache) {
+                    this.updateMapColors();
+                }
+            }
+
+            // ============================================
+            // BASCULEMENT VUE CARTE/LISTE
+            // ============================================
+            
+            toggleView() {
+                if (this.state.currentView === "list") {
+                    this.state.currentView = "map";
+                    document.getElementById("listSection").classList.add("hidden");
+                    document.getElementById("mapSection").classList.remove("hidden");
+                    
+                    if (!this.map) {
+                        this.initMap();
+                    } else if (!this.geoDataCache && !this.isLoadingGeo) {
+                        this.loadGeoData();
+                    }
+                } else {
+                    this.state.currentView = "list";
+                    document.getElementById("mapSection").classList.add("hidden");
+                    document.getElementById("listSection").classList.remove("hidden");
+                }
+            }
+
+            // ============================================
+            // INITIALISATION DE LA CARTE
+            // ============================================
+            
+            initMap() {
+                this.map = L.map("map", {
+                    preferCanvas: false,
+                    renderer: L.svg({ padding: 0.5 })
+                }).setView([49.5, 1.5], 8);
+                
+                L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+                    attribution: "© OpenStreetMap",
+                    maxZoom: 19,
+                    updateWhenIdle: true,
+                    updateWhenZooming: false
+                }).addTo(this.map);
+                
+                // Ordre d'affichage : géométries en bas, cercles au milieu, marqueurs en haut
+                this.geoLayerGroup = L.layerGroup().addTo(this.map);
+                this.flagCircles.addTo(this.map);
+                this.flagMarkers.addTo(this.map);
+                
+                // Gestion des événements carte
+                this.map.on('movestart', () => {
+                    this.map.closePopup();
+                    this.map.eachLayer(layer => {
+                        if (layer.closeTooltip) layer.closeTooltip();
+                    });
+                });
+                
+                this.map.on('click', (e) => {
+                    if (this.state.flagMode) {
+                        this.addFlag(e.latlng);
+                    }
+                });
+                
+                this.loadGeoData();
+                this.displayFlags();
+            }
+
+            // ============================================
+            // CHARGEMENT DES DONNÉES GÉOGRAPHIQUES
+            // ============================================
+            
+            async loadGeoData() {
+                if (this.isLoadingGeo) return;
+                
+                this.isLoadingGeo = true;
+                document.getElementById("loadingSection").classList.remove("hidden");
+                document.getElementById("successSection").classList.add("hidden");
+                document.getElementById("toggleViewBtn").disabled = true;
+
+                const depts = Object.keys(CONFIG.departments);
+                const cpToGeometry = {};
+
+                for (let i = 0; i < depts.length; i++) {
+                    const dept = depts[i];
+                    document.getElementById("loadingText").textContent = `Chargement ${dept}...`;
+                    
+                    try {
+                        const response = await fetch(
+                            `https://geo.api.gouv.fr/departements/${dept}/communes?fields=nom,codesPostaux&format=geojson&geometry=contour`
+                        );
                         
-                        var layer = L.geoJSON(feature, {
-                            style: {
-                                fillColor: color,
-                                fillOpacity: 0.7,
-                                color: "#666",
-                                weight: 1
-                            },
-                            onEachFeature: (function(cpClosure, communeClosure, zoneClosure, colorClosure) {
-                                return function(f, l) {
-                                    l.on("click", function(e) {
-                                        if (!flagMode) {
-                                            togglePostalCode(cpClosure);
+                        if (response.ok) {
+                            const data = await response.json();
+                            
+                            if (data.features) {
+                                data.features.forEach(feature => {
+                                    const communeName = feature.properties.nom;
+                                    const apiCps = feature.properties.codesPostaux || [];
+                                    
+                                    apiCps.forEach(cp => {
+                                        if (cp.substring(0, 2) === dept) {
+                                            if (!cpToGeometry[cp]) {
+                                                cpToGeometry[cp] = {
+                                                    communes: [],
+                                                    geometries: []
+                                                };
+                                            }
+                                            
+                                            if (!cpToGeometry[cp].communes.includes(communeName)) {
+                                                cpToGeometry[cp].communes.push(communeName);
+                                            }
+                                            
+                                            if (feature.geometry && feature.geometry.coordinates) {
+                                                cpToGeometry[cp].geometries.push({
+                                                    type: feature.geometry.type,
+                                                    coords: this.simplifyCoordinates(feature.geometry.coordinates, 0.004),
+                                                    commune: communeName
+                                                });
+                                            }
                                         }
                                     });
-                                    l.bindTooltip("<strong>" + communeClosure + "</strong><br/>CP: " + cpClosure + 
-                                        (zoneClosure ? "<br/><span style='color:" + colorClosure + ";font-weight:bold;'>" + zoneClosure.name + "</span>" : ""),
-                                        {sticky: true}
-                                    );
-                                };
-                            })(cp, geom.commune, zone, color)
-                        });
-                        geoLayerGroup.addLayer(layer);
+                                });
+                            }
+                        }
+                    } catch (error) {
+                        console.log(`Erreur chargement ${dept}:`, error);
                     }
+                    
+                    const percent = Math.round(((i + 1) / depts.length) * 100);
+                    document.getElementById("progressFill").style.width = `${percent}%`;
+                    document.getElementById("progressFill").textContent = `${percent}%`;
+                    
+                    await new Promise(resolve => setTimeout(resolve, 20));
                 }
+
+                this.geoDataCache = cpToGeometry;
+                document.getElementById("loadingSection").classList.add("hidden");
+                document.getElementById("successSection").classList.remove("hidden");
                 
-                index = end;
+                setTimeout(() => {
+                    document.getElementById("successSection").classList.add("hidden");
+                }, 5000);
                 
-                if (index < cps.length) {
-                    requestAnimationFrame(displayBatch);
-                }
+                document.getElementById("toggleViewBtn").disabled = false;
+                this.isLoadingGeo = false;
+                this.displayGeoData();
             }
-            
-            displayBatch();
-        }
 
-        function updateMapColors() {
-            displayGeoData();
-        }
-
-        function enableFlagMode() {
-            flagMode = true;
-            editingFlagId = null;
-            document.getElementById("flagModeInfo").classList.remove("hidden");
-            document.getElementById("addFlagBtn").classList.add("hidden");
-            document.getElementById("cancelFlagBtn").classList.remove("hidden");
-            if (map) map.getContainer().style.cursor = "crosshair";
-        }
-
-        function disableFlagMode() {
-            flagMode = false;
-            editingFlagId = null;
-            document.getElementById("flagModeInfo").classList.add("hidden");
-            document.getElementById("addFlagBtn").classList.remove("hidden");
-            document.getElementById("cancelFlagBtn").classList.add("hidden");
-            document.getElementById("flagName").value = "";
-            if (map) map.getContainer().style.cursor = "";
-        }
-
-        function editFlag(flagId) {
-            var flag = flags.find(function(f) { return f.id === flagId; });
-            if (!flag) return;
-            
-            document.getElementById("flagTypeSelect").value = flag.type;
-            document.getElementById("flagName").value = flag.name;
-            editingFlagId = flagId;
-            flagMode = true;
-            
-            document.getElementById("flagModeInfo").innerHTML = '<strong>Mode édition :</strong> Cliquez sur la carte pour repositionner "' + flag.name + '" ou modifiez les champs et cliquez sur Sauvegarder';
-            document.getElementById("flagModeInfo").classList.remove("hidden");
-            document.getElementById("addFlagBtn").textContent = "💾 Sauvegarder";
-            document.getElementById("addFlagBtn").onclick = function() { saveEditedFlag(); };
-            document.getElementById("addFlagBtn").classList.remove("hidden");
-            document.getElementById("cancelFlagBtn").classList.remove("hidden");
-            
-            if (map) map.getContainer().style.cursor = "crosshair";
-        }
-
-        function saveEditedFlag() {
-            if (!editingFlagId) return;
-            
-            var flag = flags.find(function(f) { return f.id === editingFlagId; });
-            if (!flag) return;
-            
-            flag.type = document.getElementById("flagTypeSelect").value;
-            flag.name = document.getElementById("flagName").value || "Sans nom";
-            
-            saveToStorage();
-            displayFlags();
-            updateFlagList();
-            
-            document.getElementById("addFlagBtn").textContent = "➕ Ajouter Drapeau";
-            document.getElementById("addFlagBtn").onclick = function() { enableFlagMode(); };
-            disableFlagMode();
-        }
-
-        function addFlag(latlng) {
-            var type = document.getElementById("flagTypeSelect").value;
-            var name = document.getElementById("flagName").value || "Sans nom";
-            
-            if (editingFlagId) {
-                // Mode édition : repositionner le drapeau
-                var flag = flags.find(function(f) { return f.id === editingFlagId; });
-                if (flag) {
-                    flag.lat = latlng.lat;
-                    flag.lng = latlng.lng;
-                    flag.type = type;
-                    flag.name = name;
+            simplifyCoordinates(coords, tolerance) {
+                if (!coords || coords.length === 0) return coords;
+                
+                // Si c'est un point simple [lon, lat]
+                if (typeof coords[0] === 'number') {
+                    return coords;
                 }
+                
+                // Si c'est un array de points [[lon, lat], [lon, lat], ...]
+                if (Array.isArray(coords[0]) && typeof coords[0][0] === 'number') {
+                    if (coords.length <= 12) return coords;
+                    
+                    const simplified = [coords[0]];
+                    const step = Math.max(2, Math.floor(coords.length / 10));
+                    
+                    for (let i = step; i < coords.length - 1; i += step) {
+                        simplified.push(coords[i]);
+                    }
+                    
+                    simplified.push(coords[coords.length - 1]);
+                    return simplified;
+                }
+                
+                // Récursion pour les polygones complexes
+                return coords.map(c => this.simplifyCoordinates(c, tolerance));
+            }
+
+            // ============================================
+            // AFFICHAGE DES GÉOMÉTRIES SUR LA CARTE
+            // ============================================
+            
+            displayGeoData() {
+                if (!this.map || !this.geoDataCache) return;
+                
+                this.geoLayerGroup.clearLayers();
+                
+                const cps = Object.keys(this.geoDataCache);
+                const batchSize = 15;
+                let index = 0;
+                
+                const displayBatch = () => {
+                    const end = Math.min(index + batchSize, cps.length);
+                    
+                    for (let i = index; i < end; i++) {
+                        const cp = cps[i];
+                        const cpData = this.geoDataCache[cp];
+                        const zone = this.state.zones[cp];
+                        
+                        // Déterminer la couleur
+                        let color;
+                        if (zone && !this.state.activeZoneFilters[zone.name]) {
+                            color = "#e5e7eb"; // Gris pour zone décochée
+                        } else {
+                            color = zone ? zone.color : "#e5e7eb";
+                        }
+                        
+                        cpData.geometries.forEach(geom => {
+                            const feature = {
+                                type: "Feature",
+                                properties: { 
+                                    cp: cp,
+                                    commune: geom.commune
+                                },
+                                geometry: {
+                                    type: geom.type,
+                                    coordinates: geom.coords
+                                }
+                            };
+                            
+                            const layer = L.geoJSON(feature, {
+                                style: {
+                                    fillColor: color,
+                                    fillOpacity: 0.7,
+                                    color: "#666",
+                                    weight: 1
+                                },
+                                onEachFeature: (f, l) => {
+                                    l.on("click", (e) => {
+                                        if (!this.state.flagMode) {
+                                            this.togglePostalCode(cp);
+                                        }
+                                    });
+                                    
+                                    l.bindTooltip(
+                                        `<strong>${geom.commune}</strong><br/>CP: ${cp}` + 
+                                        (zone ? `<br/><span style='color:${color};font-weight:bold;'>${zone.name}</span>` : ""),
+                                        { sticky: true }
+                                    );
+                                }
+                            });
+                            
+                            this.geoLayerGroup.addLayer(layer);
+                        });
+                    }
+                    
+                    index = end;
+                    
+                    if (index < cps.length) {
+                        requestAnimationFrame(displayBatch);
+                    }
+                };
+                
+                displayBatch();
+            }
+
+            updateMapColors() {
+                this.displayGeoData();
+            }
+
+            // ============================================
+            // GESTION DES DRAPEAUX
+            // ============================================
+            
+            enableFlagMode() {
+                this.state.flagMode = true;
+                this.state.editingFlagId = null;
+                document.getElementById("flagModeInfo").classList.remove("hidden");
+                document.getElementById("addFlagBtn").classList.add("hidden");
+                document.getElementById("cancelFlagBtn").classList.remove("hidden");
+                if (this.map) this.map.getContainer().style.cursor = "crosshair";
+            }
+
+            disableFlagMode() {
+                this.state.flagMode = false;
+                this.state.editingFlagId = null;
+                document.getElementById("flagModeInfo").classList.add("hidden");
+                document.getElementById("addFlagBtn").classList.remove("hidden");
+                document.getElementById("cancelFlagBtn").classList.add("hidden");
+                document.getElementById("flagName").value = "";
+                if (this.map) this.map.getContainer().style.cursor = "";
+            }
+
+            addFlag(latlng) {
+                const type = document.getElementById("flagTypeSelect").value;
+                const name = document.getElementById("flagName").value || "Sans nom";
+                
+                if (this.state.editingFlagId) {
+                    // Mode édition : repositionner le drapeau
+                    const flag = this.state.flags.find(f => f.id === this.state.editingFlagId);
+                    if (flag) {
+                        flag.lat = latlng.lat;
+                        flag.lng = latlng.lng;
+                        flag.type = type;
+                        flag.name = name;
+                    }
+                    
+                    document.getElementById("addFlagBtn").textContent = "➕ Ajouter Drapeau";
+                    document.getElementById("addFlagBtn").onclick = () => this.enableFlagMode();
+                } else {
+                    // Mode ajout : nouveau drapeau
+                    this.state.flags.push({
+                        id: Date.now(),
+                        type: type,
+                        name: name,
+                        lat: latlng.lat,
+                        lng: latlng.lng
+                    });
+                }
+                
+                this.saveToStorage();
+                this.displayFlags();
+                this.updateFlagList();
+                this.disableFlagMode();
+            }
+
+            editFlag(flagId) {
+                const flag = this.state.flags.find(f => f.id === flagId);
+                if (!flag) return;
+                
+                document.getElementById("flagTypeSelect").value = flag.type;
+                document.getElementById("flagName").value = flag.name;
+                this.state.editingFlagId = flagId;
+                this.state.flagMode = true;
+                
+                document.getElementById("flagModeInfo").innerHTML = 
+                    `<strong>Mode édition :</strong> Cliquez sur la carte pour repositionner "${flag.name}" ou modifiez les champs et cliquez sur Sauvegarder`;
+                document.getElementById("flagModeInfo").classList.remove("hidden");
+                document.getElementById("addFlagBtn").textContent = "💾 Sauvegarder";
+                document.getElementById("addFlagBtn").onclick = () => this.saveEditedFlag();
+                document.getElementById("addFlagBtn").classList.remove("hidden");
+                document.getElementById("cancelFlagBtn").classList.remove("hidden");
+                
+                if (this.map) this.map.getContainer().style.cursor = "crosshair";
+            }
+
+            saveEditedFlag() {
+                if (!this.state.editingFlagId) return;
+                
+                const flag = this.state.flags.find(f => f.id === this.state.editingFlagId);
+                if (!flag) return;
+                
+                flag.type = document.getElementById("flagTypeSelect").value;
+                flag.name = document.getElementById("flagName").value || "Sans nom";
+                
+                this.saveToStorage();
+                this.displayFlags();
+                this.updateFlagList();
                 
                 document.getElementById("addFlagBtn").textContent = "➕ Ajouter Drapeau";
-                document.getElementById("addFlagBtn").onclick = function() { enableFlagMode(); };
-            } else {
-                // Mode ajout : nouveau drapeau
-                var flag = {
-                    id: Date.now(),
-                    type: type,
-                    name: name,
-                    lat: latlng.lat,
-                    lng: latlng.lng
-                };
-                flags.push(flag);
+                document.getElementById("addFlagBtn").onclick = () => this.enableFlagMode();
+                this.disableFlagMode();
             }
-            
-            saveToStorage();
-            displayFlags();
-            updateFlagList();
-            disableFlagMode();
-        }
 
-        function displayFlags() {
-            if (!map) return;
-            flagMarkers.clearLayers();
-            flagCircles.clearLayers();
-            
-            for (var i = 0; i < flags.length; i++) {
-                var flag = flags[i];
-                var color, icon, label;
+            deleteFlag(flagId) {
+                this.state.flags = this.state.flags.filter(f => f.id !== flagId);
+                this.saveToStorage();
+                this.displayFlags();
+                this.updateFlagList();
+            }
+
+            displayFlags() {
+                if (!this.map) return;
                 
-                if (flag.type === "permanence_active") {
-                    color = "#FF1744";
-                    icon = "🚩";
-                    label = "Permanence Active";
-                } else if (flag.type === "permanence_inactive") {
-                    color = "#2962FF";
-                    icon = "🏁";
-                    label = "Permanence Inactive";
-                } else if (flag.type === "agence") {
-                    color = "#FF9800";
-                    icon = "🏢";
-                    label = "Agence";
-                }
+                this.flagMarkers.clearLayers();
+                this.flagCircles.clearLayers();
                 
-                // Afficher le cercle seulement si les rayons sont visibles ET si ce type est activé
-                if (rayonsVisible && visibleRayonTypes[flag.type]) {
-                    var circle = L.circle([flag.lat, flag.lng], {
-                        color: color,
-                        fillColor: color,
-                        fillOpacity: 0.15,
-                        radius: 20000,
-                        weight: 3,
-                        dashArray: '10, 10',
-                        pane: 'overlayPane',
-                        interactive: false
+                this.state.flags.forEach(flag => {
+                    const flagConfig = CONFIG.flagTypes[flag.type];
+                    
+                    // Afficher le cercle si rayons visibles ET type activé
+                    if (this.state.rayonsVisible && this.state.visibleRayonTypes[flag.type]) {
+                        const circle = L.circle([flag.lat, flag.lng], {
+                            color: flagConfig.color,
+                            fillColor: flagConfig.color,
+                            fillOpacity: 0.15,
+                            radius: 20000,
+                            weight: 3,
+                            dashArray: '10, 10',
+                            pane: 'overlayPane',
+                            interactive: false
+                        });
+                        this.flagCircles.addLayer(circle);
+                    }
+                    
+                    // Marqueur toujours visible
+                    const customIcon = L.divIcon({
+                        className: 'custom-flag-marker',
+                        html: `<div style="font-size:32px;text-shadow:2px 2px 4px rgba(0,0,0,0.5);">${flagConfig.icon}</div>`,
+                        iconSize: [32, 32],
+                        iconAnchor: [16, 32]
                     });
-                    flagCircles.addLayer(circle);
+                    
+                    const marker = L.marker([flag.lat, flag.lng], { icon: customIcon });
+                    marker.bindPopup(
+                        `<strong>${flagConfig.icon} ${flagConfig.label}</strong><br/>` +
+                        `${flag.name}<br/><small style='color:#666;'>Rayon: 20km</small>`
+                    );
+                    marker.on('click', function() {
+                        this.openPopup();
+                    });
+                    
+                    this.flagMarkers.addLayer(marker);
+                });
+            }
+
+            updateFlagList() {
+                const container = document.getElementById("flagList");
+                container.innerHTML = "";
+                
+                if (this.state.flags.length === 0) {
+                    container.innerHTML = '<p style="color:#6b7280;font-size:13px;">Aucun drapeau placé</p>';
+                    return;
                 }
                 
-                // Marqueur toujours visible
-                var customIcon = L.divIcon({
-                    className: 'custom-flag-marker',
-                    html: '<div style="font-size:32px;text-shadow:2px 2px 4px rgba(0,0,0,0.5);">' + icon + '</div>',
-                    iconSize: [32, 32],
-                    iconAnchor: [16, 32]
+                const fragment = document.createDocumentFragment();
+                
+                this.state.flags.forEach(flag => {
+                    const flagConfig = CONFIG.flagTypes[flag.type];
+                    
+                    const div = document.createElement("div");
+                    div.className = "flag-item";
+                    div.style.backgroundColor = flagConfig.bg;
+                    
+                    const span = document.createElement("span");
+                    span.innerHTML = `${flagConfig.icon} ${flag.name} <small style='color:#666;'>(20km)</small>`;
+                    span.style.fontWeight = "500";
+                    span.style.flex = "1";
+                    span.style.cursor = "pointer";
+                    span.onclick = () => this.editFlag(flag.id);
+                    span.title = "Cliquer pour modifier";
+                    
+                    const btnContainer = document.createElement("div");
+                    btnContainer.style.display = "flex";
+                    btnContainer.style.gap = "8px";
+                    
+                    const editBtn = document.createElement("button");
+                    editBtn.className = "flag-delete";
+                    editBtn.style.background = "#3b82f6";
+                    editBtn.textContent = "Modifier";
+                    editBtn.onclick = () => this.editFlag(flag.id);
+                    
+                    const deleteBtn = document.createElement("button");
+                    deleteBtn.className = "flag-delete";
+                    deleteBtn.textContent = "Supprimer";
+                    deleteBtn.onclick = () => this.deleteFlag(flag.id);
+                    
+                    btnContainer.appendChild(editBtn);
+                    btnContainer.appendChild(deleteBtn);
+                    
+                    div.appendChild(span);
+                    div.appendChild(btnContainer);
+                    fragment.appendChild(div);
                 });
                 
-                var marker = L.marker([flag.lat, flag.lng], {icon: customIcon});
-                marker.bindPopup("<strong>" + icon + " " + label + 
-                    "</strong><br/>" + flag.name + "<br/><small style='color:#666;'>Rayon: 20km</small>");
-                marker.on('click', (function(flagId) {
-                    return function() {
-                        this.openPopup();
-                    };
-                })(flag.id));
-                flagMarkers.addLayer(marker);
-            }
-        }
-
-        function updateFlagList() {
-            var container = document.getElementById("flagList");
-            container.innerHTML = "";
-            
-            if (flags.length === 0) {
-                container.innerHTML = '<p style="color:#6b7280;font-size:13px;">Aucun drapeau placé</p>';
-                return;
-            }
-            
-            var fragment = document.createDocumentFragment();
-            for (var i = 0; i < flags.length; i++) {
-                var flag = flags[i];
-                var div = document.createElement("div");
-                div.className = "flag-item";
-                
-                var icon, bgColor;
-                if (flag.type === "permanence_active") {
-                    icon = "🚩";
-                    bgColor = "#ffcdd2";
-                } else if (flag.type === "permanence_inactive") {
-                    icon = "🏁";
-                    bgColor = "#bbdefb";
-                } else if (flag.type === "agence") {
-                    icon = "🏢";
-                    bgColor = "#ffe0b2";
-                }
-                
-                div.style.backgroundColor = bgColor;
-                
-                var span = document.createElement("span");
-                span.innerHTML = icon + " " + flag.name + " <small style='color:#666;'>(20km)</small>";
-                span.style.fontWeight = "500";
-                span.style.flex = "1";
-                span.style.cursor = "pointer";
-                span.onclick = (function(flagId) {
-                    return function() { editFlag(flagId); };
-                })(flag.id);
-                span.title = "Cliquer pour modifier";
-                
-                var btnContainer = document.createElement("div");
-                btnContainer.style.display = "flex";
-                btnContainer.style.gap = "8px";
-                
-                var editBtn = document.createElement("button");
-                editBtn.className = "flag-delete";
-                editBtn.style.background = "#3b82f6";
-                editBtn.textContent = "Modifier";
-                editBtn.onclick = (function(flagId) {
-                    return function() { editFlag(flagId); };
-                })(flag.id);
-                
-                var deleteBtn = document.createElement("button");
-                deleteBtn.className = "flag-delete";
-                deleteBtn.textContent = "Supprimer";
-                deleteBtn.onclick = (function(flagId) {
-                    return function() { deleteFlag(flagId); };
-                })(flag.id);
-                
-                btnContainer.appendChild(editBtn);
-                btnContainer.appendChild(deleteBtn);
-                
-                div.appendChild(span);
-                div.appendChild(btnContainer);
-                fragment.appendChild(div);
-            }
-            container.appendChild(fragment);
-        }
-
-        function toggleZonesVisibility() {
-            zonesVisible = !zonesVisible;
-            if (map && geoLayerGroup) {
-                if (zonesVisible) {
-                    map.addLayer(geoLayerGroup);
-                } else {
-                    map.removeLayer(geoLayerGroup);
-                }
-            }
-        }
-
-        function toggleRayonsVisibility() {
-            rayonsVisible = !rayonsVisible;
-            displayFlags();
-        }
-
-        function toggleRayonType(type) {
-            visibleRayonTypes[type] = !visibleRayonTypes[type];
-            displayFlags();
-        }
-
-        function deleteFlag(flagId) {
-            flags = flags.filter(function(f) { return f.id !== flagId; });
-            saveToStorage();
-            displayFlags();
-            updateFlagList();
-        }
-
-        function exportData() {
-            var colorGroups = {};
-            var cpList = Object.keys(zones);
-            
-            for (var i = 0; i < cpList.length; i++) {
-                var cp = cpList[i];
-                var data = zones[cp];
-                if (!colorGroups[data.color]) {
-                    colorGroups[data.color] = {name: data.name, postalCodes: []};
-                }
-                colorGroups[data.color].postalCodes.push(cp);
+                container.appendChild(fragment);
             }
 
-            var text = "EXPORT DES ZONES DE PERMANENCE\n================================\n\n";
-            var colorKeys = Object.keys(colorGroups);
-            
-            for (var i = 0; i < colorKeys.length; i++) {
-                var color = colorKeys[i];
-                var data = colorGroups[color];
-                var colorName = null;
-                for (var j = 0; j < colors.length; j++) {
-                    if (colors[j].hex === color) {
-                        colorName = colors[j];
-                        break;
+            toggleZonesVisibility() {
+                this.state.zonesVisible = !this.state.zonesVisible;
+                
+                if (this.map && this.geoLayerGroup) {
+                    if (this.state.zonesVisible) {
+                        this.map.addLayer(this.geoLayerGroup);
+                    } else {
+                        this.map.removeLayer(this.geoLayerGroup);
                     }
                 }
-                text += data.name + " (" + (colorName ? colorName.name : "Couleur personnalisée") + ")\n";
-                text += "Codes postaux (" + data.postalCodes.length + "): " + data.postalCodes.sort().join(", ") + "\n\n";
             }
 
-            var blob = new Blob([text], {type: "text/plain"});
-            var url = URL.createObjectURL(blob);
-            var a = document.createElement("a");
-            a.href = url;
-            a.download = "zones-permanence.txt";
-            a.click();
-        }
+            toggleRayonsVisibility() {
+                this.state.rayonsVisible = !this.state.rayonsVisible;
+                this.displayFlags();
+            }
 
-        function exportJSON() {
-            var exportData = {
-                version: "1.0",
-                date: new Date().toISOString(),
-                zones: zones,
-                postalData: postalData,
-                flags: flags
-            };
-            
-            var json = JSON.stringify(exportData, null, 2);
-            var blob = new Blob([json], {type: "application/json"});
-            var url = URL.createObjectURL(blob);
-            var a = document.createElement("a");
-            a.href = url;
-            var dateStr = new Date().toISOString().split('T')[0];
-            a.download = "zones-permanence-" + dateStr + ".json";
-            a.click();
-            
-            alert("Configuration exportée avec succès !\n\nVous pouvez maintenant partager ce fichier JSON avec vos collègues.\n\nIls pourront l'importer pour retrouver exactement vos zones colorées.");
-        }
+            toggleRayonType(type) {
+                this.state.visibleRayonTypes[type] = !this.state.visibleRayonTypes[type];
+                this.displayFlags();
+            }
 
-        function importJSON(event) {
-            var file = event.target.files[0];
-            if (!file) return;
+            // ============================================
+            // EXPORT / IMPORT
+            // ============================================
             
-            var reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    var importData = JSON.parse(e.target.result);
-                    
-                    if (!importData.zones || !importData.postalData) {
-                        alert("❌ Fichier JSON invalide. Assurez-vous d'importer un fichier exporté depuis cette application.");
-                        return;
+            exportData() {
+                const colorGroups = {};
+                
+                Object.entries(this.state.zones).forEach(([cp, data]) => {
+                    if (!colorGroups[data.color]) {
+                        colorGroups[data.color] = { name: data.name, postalCodes: [] };
                     }
-                    
-                    if (Object.keys(zones).length > 0) {
-                        if (!confirm("⚠️ Vous avez déjà des zones colorées.\n\nVoulez-vous remplacer votre configuration actuelle par celle du fichier importé ?")) {
+                    colorGroups[data.color].postalCodes.push(cp);
+                });
+
+                let text = "EXPORT DES ZONES DE PERMANENCE\n================================\n\n";
+                
+                Object.entries(colorGroups).forEach(([color, data]) => {
+                    const colorName = CONFIG.colors.find(c => c.hex === color);
+                    text += `${data.name} (${colorName ? colorName.name : "Couleur personnalisée"})\n`;
+                    text += `Codes postaux (${data.postalCodes.length}): ${data.postalCodes.sort().join(", ")}\n\n`;
+                });
+
+                const blob = new Blob([text], { type: "text/plain" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "zones-permanence.txt";
+                a.click();
+            }
+
+            exportJSON() {
+                const exportData = {
+                    version: "1.0",
+                    date: new Date().toISOString(),
+                    zones: this.state.zones,
+                    postalData: this.state.postalData,
+                    flags: this.state.flags
+                };
+                
+                const json = JSON.stringify(exportData, null, 2);
+                const blob = new Blob([json], { type: "application/json" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                const dateStr = new Date().toISOString().split('T')[0];
+                a.download = `zones-permanence-${dateStr}.json`;
+                a.click();
+                
+                alert("Configuration exportée avec succès !\n\nVous pouvez maintenant partager ce fichier JSON avec vos collègues.\n\nIls pourront l'importer pour retrouver exactement vos zones colorées.");
+            }
+
+            importJSON(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+                
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const importData = JSON.parse(e.target.result);
+                        
+                        if (!importData.zones || !importData.postalData) {
+                            alert("❌ Fichier JSON invalide. Assurez-vous d'importer un fichier exporté depuis cette application.");
                             return;
                         }
+                        
+                        if (Object.keys(this.state.zones).length > 0) {
+                            if (!confirm("⚠️ Vous avez déjà des zones colorées.\n\nVoulez-vous remplacer votre configuration actuelle par celle du fichier importé ?")) {
+                                return;
+                            }
+                        }
+                        
+                        this.state.zones = importData.zones;
+                        this.state.postalData = importData.postalData;
+                        this.state.flags = importData.flags || [];
+                        
+                        this.saveToStorage();
+                        this.showMainSection();
+                        this.updatePostalGrid();
+                        this.updateStats();
+                        this.initZoneFilters();
+                        
+                        if (this.map && this.geoDataCache) {
+                            this.updateMapColors();
+                            this.displayFlags();
+                        }
+                        
+                        this.updateFlagList();
+                        
+                        alert(`✅ Configuration importée avec succès !\n\n${Object.keys(this.state.zones).length} codes postaux colorés et ${this.state.flags.length} drapeaux ont été restaurés.`);
+                        
+                    } catch (error) {
+                        alert("❌ Erreur lors de l'import du fichier JSON.\n\nAssurez-vous que le fichier n'est pas corrompu.");
+                        console.error(error);
                     }
-                    
-                    zones = importData.zones;
-                    postalData = importData.postalData;
-                    flags = importData.flags || [];
-                    
-                    saveToStorage();
-                    showMainSection();
-                    updatePostalGrid();
-                    updateStats();
-                    initZoneFilters();
-                    
-                    if (map && geoDataCache) {
-                        updateMapColors();
-                        displayFlags();
-                    }
-                    
-                    updateFlagList();
-                    
-                    alert("✅ Configuration importée avec succès !\n\n" + Object.keys(zones).length + " codes postaux colorés et " + flags.length + " drapeaux ont été restaurés.");
-                    
-                } catch (error) {
-                    alert("❌ Erreur lors de l'import du fichier JSON.\n\nAssurez-vous que le fichier n'est pas corrompu.");
-                    console.error(error);
-                }
-            };
-            reader.readAsText(file);
-            
-            event.target.value = "";
-        }
-
-        function clearAll() {
-            if (confirm("Effacer toutes les zones colorées ET tous les drapeaux ?")) {
-                zones = {};
-                flags = [];
-                saveToStorage();
-                updatePostalGrid();
-                updateStats();
-                initZoneFilters();
-                if (map && geoDataCache) {
-                    updateMapColors();
-                    displayFlags();
-                }
-                updateFlagList();
-            }
-        }
-
-        function reloadCSV() {
-            if (confirm("Voulez-vous recharger un nouveau fichier CSV ? Cela effacera les données actuelles.")) {
-                postalData = [];
-                zones = {};
-                flags = [];
-                geoDataCache = null;
-                localStorage.clear();
-                document.getElementById("uploadSection").classList.remove("hidden");
-                document.getElementById("mainSection").classList.add("hidden");
-                document.getElementById("listSection").classList.add("hidden");
-                document.getElementById("mapSection").classList.add("hidden");
-                document.getElementById("fileInput").value = "";
-                if (map) {
-                    map.remove();
-                    map = null;
-                    geoLayerGroup = null;
-                    flagMarkers = L.layerGroup();
-                    flagCircles = L.layerGroup();
-                }
-            }
-        }
-
-        function reloadMap() {
-            if (confirm("Recharger la carte avec les nouvelles optimisations ? Vos zones colorées seront conservées.")) {
-                geoDataCache = null;
-                if (map) {
-                    geoLayerGroup.clearLayers();
-                }
-                if (currentView === "map" && map) {
-                    loadGeoData();
-                }
-            }
-        }
-
-        function saveToStorage() {
-            try {
-                localStorage.setItem("postalData", JSON.stringify(postalData));
-                localStorage.setItem("zones", JSON.stringify(zones));
-                localStorage.setItem("flags", JSON.stringify(flags));
-            } catch(e) {
-                console.log("Erreur sauvegarde");
-            }
-        }
-
-        function loadFromStorage() {
-            try {
-                var savedData = localStorage.getItem("postalData");
-                var savedZones = localStorage.getItem("zones");
-                var savedFlags = localStorage.getItem("flags");
+                };
+                reader.readAsText(file);
                 
-                if (savedData) {
-                    postalData = JSON.parse(savedData);
-                    showMainSection();
-                    updatePostalGrid();
+                event.target.value = "";
+            }
+
+            // ============================================
+            // UTILITAIRES
+            // ============================================
+            
+            clearAll() {
+                if (confirm("Effacer toutes les zones colorées ET tous les drapeaux ?")) {
+                    this.state.zones = {};
+                    this.state.flags = [];
+                    this.saveToStorage();
+                    this.updatePostalGrid();
+                    this.updateStats();
+                    this.initZoneFilters();
+                    
+                    if (this.map && this.geoDataCache) {
+                        this.updateMapColors();
+                        this.displayFlags();
+                    }
+                    
+                    this.updateFlagList();
                 }
-                if (savedZones) {
-                    zones = JSON.parse(savedZones);
-                    updatePostalGrid();
-                    updateStats();
+            }
+
+            reloadCSV() {
+                if (confirm("Voulez-vous recharger un nouveau fichier CSV ? Cela effacera les données actuelles.")) {
+                    this.state.postalData = [];
+                    this.state.zones = {};
+                    this.state.flags = [];
+                    this.geoDataCache = null;
+                    localStorage.clear();
+                    
+                    document.getElementById("uploadSection").classList.remove("hidden");
+                    document.getElementById("mainSection").classList.add("hidden");
+                    document.getElementById("listSection").classList.add("hidden");
+                    document.getElementById("mapSection").classList.add("hidden");
+                    document.getElementById("fileInput").value = "";
+                    
+                    if (this.map) {
+                        this.map.remove();
+                        this.map = null;
+                        this.geoLayerGroup = null;
+                        this.flagMarkers = L.layerGroup();
+                        this.flagCircles = L.layerGroup();
+                    }
                 }
-                if (savedFlags) {
-                    flags = JSON.parse(savedFlags);
-                    updateFlagList();
+            }
+
+            reloadMap() {
+                if (confirm("Recharger la carte avec les nouvelles optimisations ? Vos zones colorées seront conservées.")) {
+                    this.geoDataCache = null;
+                    if (this.map) {
+                        this.geoLayerGroup.clearLayers();
+                    }
+                    if (this.state.currentView === "map" && this.map) {
+                        this.loadGeoData();
+                    }
                 }
-            } catch(e) {
-                console.log("Erreur chargement");
+            }
+
+            // ============================================
+            // STOCKAGE LOCAL
+            // ============================================
+            
+            saveToStorage() {
+                try {
+                    localStorage.setItem("postalData", JSON.stringify(this.state.postalData));
+                    localStorage.setItem("zones", JSON.stringify(this.state.zones));
+                    localStorage.setItem("flags", JSON.stringify(this.state.flags));
+                } catch(e) {
+                    console.error("Erreur sauvegarde localStorage:", e);
+                }
+            }
+
+            loadFromStorage() {
+                try {
+                    const savedData = localStorage.getItem("postalData");
+                    const savedZones = localStorage.getItem("zones");
+                    const savedFlags = localStorage.getItem("flags");
+                    
+                    if (savedData) {
+                        this.state.postalData = JSON.parse(savedData);
+                        this.showMainSection();
+                        this.updatePostalGrid();
+                    }
+                    
+                    if (savedZones) {
+                        this.state.zones = JSON.parse(savedZones);
+                        this.updatePostalGrid();
+                        this.updateStats();
+                    }
+                    
+                    if (savedFlags) {
+                        this.state.flags = JSON.parse(savedFlags);
+                        this.updateFlagList();
+                    }
+                } catch(e) {
+                    console.error("Erreur chargement localStorage:", e);
+                }
             }
         }
+
+        // ============================================
+        // INITIALISATION DE L'APPLICATION
+        // ============================================
+        
+        const app = new CarteZonesApp();
+        
+        // Rendre l'instance accessible globalement pour les event handlers inline
+        window.app = app;
     </script>
 </body>
 </html>
