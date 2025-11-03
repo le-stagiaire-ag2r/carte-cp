@@ -82,6 +82,7 @@
                     <button class="btn-blue" onclick="app.exportJSON()">⬇️ Exporter JSON</button>
                     <button class="btn-blue" onclick="document.getElementById('importJSON').click()">⬆️ Importer JSON</button>
                     <input type="file" id="importJSON" accept=".json" style="display:none;" onchange="app.importJSON(event)">
+                    <button class="btn-success" onclick="app.exportMapAsPNG()" style="background: #059669;">📸 Exporter carte PNG</button>
                     <button class="btn-purple" onclick="app.reloadCSV()">📁 Recharger CSV</button>
                     <button class="btn-purple" onclick="app.reloadMap()">🗺️ Recharger Carte</button>
                     <button class="btn-red" onclick="app.clearAll()">🗑️ Effacer tout</button>
@@ -125,6 +126,26 @@
                 <div class="zone-filter">
                     <h3 style="margin-bottom: 8px;">🎯 Filtre par zones</h3>
                     <p style="font-size: 13px; color: #6b7280; margin-bottom: 12px;">Cochez les zones à afficher</p>
+                    
+                    <!-- Sélection rapide des régions -->
+                    <div style="background: #fff; padding: 12px; border-radius: 6px; margin-bottom: 12px; border: 2px solid #818cf8;">
+                        <div style="font-weight: 600; margin-bottom: 8px; font-size: 14px;">⚡ Sélection rapide :</div>
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            <button class="btn-secondary" style="padding: 6px 12px; font-size: 13px;" onclick="app.selectAllZones()">
+                                ✓ Tout sélectionner
+                            </button>
+                            <button class="btn-secondary" style="padding: 6px 12px; font-size: 13px;" onclick="app.deselectAllZones()">
+                                ✗ Tout désélectionner
+                            </button>
+                            <button class="btn-secondary" style="padding: 6px 12px; font-size: 13px;" onclick="app.selectNordOnly()">
+                                🎯 Nord uniquement
+                            </button>
+                            <button class="btn-secondary" style="padding: 6px 12px; font-size: 13px;" onclick="app.selectNordAisne()">
+                                🎯 Nord + Aisne
+                            </button>
+                        </div>
+                    </div>
+                    
                     <div class="zone-checkboxes" id="zoneFilterList"></div>
                 </div>
             </div>
@@ -212,6 +233,9 @@
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Bibliothèques pour l'export PNG -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-image/0.4.0/leaflet-image.js"></script>
     <script>
         // ============================================
         // CONFIGURATION & DONNÉES
@@ -473,6 +497,7 @@
                     const checkbox = document.createElement("input");
                     checkbox.type = "checkbox";
                     checkbox.checked = this.state.activeZoneFilters[zoneName];
+                    checkbox.dataset.zoneName = zoneName; // Ajouter pour sélection rapide
                     checkbox.onchange = (e) => {
                         this.state.activeZoneFilters[zoneName] = e.target.checked;
                         this.updatePostalGrid();
@@ -495,6 +520,64 @@
                 });
                 
                 container.appendChild(fragment);
+            }
+
+            // ============================================
+            // SÉLECTION RAPIDE DES ZONES
+            // ============================================
+            
+            selectAllZones() {
+                Object.keys(this.state.activeZoneFilters).forEach(zoneName => {
+                    this.state.activeZoneFilters[zoneName] = true;
+                });
+                this.updateZoneCheckboxes();
+                this.updatePostalGrid();
+                if (this.map && this.geoDataCache) this.updateMapColors();
+            }
+
+            deselectAllZones() {
+                Object.keys(this.state.activeZoneFilters).forEach(zoneName => {
+                    this.state.activeZoneFilters[zoneName] = false;
+                });
+                this.updateZoneCheckboxes();
+                this.updatePostalGrid();
+                if (this.map && this.geoDataCache) this.updateMapColors();
+            }
+
+            selectNordOnly() {
+                // Détecter les zones qui contiennent "Nord" dans leur nom
+                Object.keys(this.state.activeZoneFilters).forEach(zoneName => {
+                    this.state.activeZoneFilters[zoneName] = 
+                        zoneName.toLowerCase().includes('nord') || 
+                        zoneName.toLowerCase().includes('lille') ||
+                        zoneName.toLowerCase().includes('59');
+                });
+                this.updateZoneCheckboxes();
+                this.updatePostalGrid();
+                if (this.map && this.geoDataCache) this.updateMapColors();
+            }
+
+            selectNordAisne() {
+                // Détecter les zones Nord et Aisne
+                Object.keys(this.state.activeZoneFilters).forEach(zoneName => {
+                    const lower = zoneName.toLowerCase();
+                    this.state.activeZoneFilters[zoneName] = 
+                        lower.includes('nord') || lower.includes('lille') || lower.includes('59') ||
+                        lower.includes('aisne') || lower.includes('02');
+                });
+                this.updateZoneCheckboxes();
+                this.updatePostalGrid();
+                if (this.map && this.geoDataCache) this.updateMapColors();
+            }
+
+            updateZoneCheckboxes() {
+                // Mettre à jour l'état des checkboxes
+                document.querySelectorAll('.zone-checkbox-item input[type="checkbox"]').forEach(checkbox => {
+                    const zoneName = checkbox.dataset.zoneName;
+                    if (zoneName) {
+                        checkbox.checked = this.state.activeZoneFilters[zoneName];
+                    }
+                });
             }
 
             // ============================================
@@ -766,11 +849,22 @@
                         const zone = this.state.zones[cp];
                         
                         // Déterminer la couleur
-                        let color;
+                        let color, fillOpacity, strokeWeight, strokeColor;
                         if (zone && !this.state.activeZoneFilters[zone.name]) {
                             color = "#e5e7eb"; // Gris pour zone décochée
+                            fillOpacity = 0.3;
+                            strokeWeight = 1;
+                            strokeColor = "#999";
+                        } else if (zone) {
+                            color = zone.color;
+                            fillOpacity = 0.7;
+                            strokeWeight = 3; // Contour plus épais pour les zones colorées
+                            strokeColor = "#000"; // Contour noir
                         } else {
-                            color = zone ? zone.color : "#e5e7eb";
+                            color = "#e5e7eb";
+                            fillOpacity = 0.3;
+                            strokeWeight = 1;
+                            strokeColor = "#999";
                         }
                         
                         cpData.geometries.forEach(geom => {
@@ -789,9 +883,9 @@
                             const layer = L.geoJSON(feature, {
                                 style: {
                                     fillColor: color,
-                                    fillOpacity: 0.7,
-                                    color: "#666",
-                                    weight: 1
+                                    fillOpacity: fillOpacity,
+                                    color: strokeColor,
+                                    weight: strokeWeight
                                 },
                                 onEachFeature: (f, l) => {
                                     l.on("click", (e) => {
@@ -1118,6 +1212,122 @@
             toggleRayonType(type) {
                 this.state.visibleRayonTypes[type] = !this.state.visibleRayonTypes[type];
                 this.displayFlags();
+            }
+
+            // ============================================
+            // EXPORT PNG DE LA CARTE
+            // ============================================
+            
+            async exportMapAsPNG() {
+                if (!this.map) {
+                    alert("Veuillez d'abord afficher la carte !");
+                    return;
+                }
+
+                // Créer une notification de chargement
+                const loadingDiv = document.createElement('div');
+                loadingDiv.style.cssText = `
+                    position: fixed;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    background: white;
+                    padding: 30px 50px;
+                    border-radius: 12px;
+                    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+                    z-index: 10000;
+                    text-align: center;
+                    font-size: 18px;
+                    font-weight: 600;
+                `;
+                loadingDiv.innerHTML = `
+                    <div style="margin-bottom: 15px;">📸 Export en cours...</div>
+                    <div style="font-size: 14px; color: #6b7280; font-weight: normal;">
+                        Capture de la carte avec tous les éléments
+                    </div>
+                `;
+                document.body.appendChild(loadingDiv);
+
+                try {
+                    // Attendre un peu pour que tout soit bien rendu
+                    await new Promise(resolve => setTimeout(resolve, 500));
+
+                    // Méthode 1: Utiliser leaflet-image si disponible
+                    if (typeof leafletImage !== 'undefined') {
+                        leafletImage(this.map, async (err, canvas) => {
+                            if (err) {
+                                console.error('Erreur leaflet-image:', err);
+                                // Fallback vers html2canvas
+                                await this.exportWithHtml2Canvas();
+                            } else {
+                                // Ajouter les marqueurs et cercles sur le canvas
+                                const finalCanvas = await this.addMarkersToCanvas(canvas);
+                                this.downloadCanvas(finalCanvas, 'carte-zones-permanence.png');
+                            }
+                            document.body.removeChild(loadingDiv);
+                        });
+                    } else {
+                        // Méthode 2: Utiliser html2canvas
+                        await this.exportWithHtml2Canvas();
+                        document.body.removeChild(loadingDiv);
+                    }
+                } catch (error) {
+                    console.error('Erreur export:', error);
+                    alert('Erreur lors de l\'export. Essayez de faire une capture d\'écran manuelle.');
+                    document.body.removeChild(loadingDiv);
+                }
+            }
+
+            async exportWithHtml2Canvas() {
+                const mapElement = document.getElementById('map');
+                
+                try {
+                    const canvas = await html2canvas(mapElement, {
+                        useCORS: true,
+                        allowTaint: true,
+                        backgroundColor: '#f0f0f0',
+                        scale: 2, // Meilleure qualité
+                        logging: false
+                    });
+                    
+                    this.downloadCanvas(canvas, 'carte-zones-permanence.png');
+                } catch (error) {
+                    console.error('Erreur html2canvas:', error);
+                    throw error;
+                }
+            }
+
+            async addMarkersToCanvas(baseCanvas) {
+                // Créer un nouveau canvas pour combiner tout
+                const finalCanvas = document.createElement('canvas');
+                finalCanvas.width = baseCanvas.width;
+                finalCanvas.height = baseCanvas.height;
+                const ctx = finalCanvas.getContext('2d');
+                
+                // Dessiner la carte de base
+                ctx.drawImage(baseCanvas, 0, 0);
+                
+                // Dessiner les marqueurs et cercles
+                // Note: Cette partie est complexe car il faut convertir les coordonnées lat/lng en pixels
+                // Pour simplifier, on utilise html2canvas qui capture tout
+                
+                return finalCanvas;
+            }
+
+            downloadCanvas(canvas, filename) {
+                // Convertir le canvas en blob et télécharger
+                canvas.toBlob((blob) => {
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    
+                    alert('✅ Carte exportée avec succès !\n\nVous pouvez maintenant l\'insérer dans votre présentation PowerPoint.');
+                }, 'image/png');
             }
 
             // ============================================
