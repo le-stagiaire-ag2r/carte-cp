@@ -140,12 +140,16 @@
             <div class="flag-section">
                 <h3 style="margin-bottom: 12px;">🚩 Gestion des drapeaux</h3>
                 <div class="flag-controls">
-                    <select id="flagTypeSelect" style="padding: 10px; border-radius: 6px; border: 2px solid #000; font-weight: bold;">
+                    <select id="flagTypeSelect" style="padding: 10px; border-radius: 6px; border: 2px solid #000; font-weight: bold;" onchange="app.onFlagTypeChange()">
                         <option value="permanence_active">🚩 Permanence Active</option>
                         <option value="permanence_inactive">🏁 Permanence Inactive</option>
                         <option value="agence">🏢 Agence</option>
+                        <option value="commercial">👤 Commercial (Bitmoji)</option>
                     </select>
                     <input type="text" id="flagName" placeholder="Nom du drapeau..." style="flex: 1; min-width: 200px;">
+                    <select id="bitmojiSelect" class="hidden" style="padding: 10px; border-radius: 6px; border: 2px solid #000; font-weight: bold; min-width: 150px;">
+                        <option value="">Choisir un avatar</option>
+                    </select>
                     <button class="btn-green" id="addFlagBtn" onclick="app.enableFlagMode()">➕ Ajouter Drapeau</button>
                     <button class="btn-red hidden" id="cancelFlagBtn" onclick="app.disableFlagMode()">❌ Annuler</button>
                     <button class="btn-purple" onclick="app.toggleZonesVisibility()">👁️ Masquer/Afficher Zones</button>
@@ -169,6 +173,10 @@
                         <label class="flag-filter-item">
                             <input type="checkbox" id="filterAgence" checked onchange="app.toggleRayonType('agence')">
                             <span>🏢 Agences</span>
+                        </label>
+                        <label class="flag-filter-item">
+                            <input type="checkbox" id="filterCommercial" checked onchange="app.toggleRayonType('commercial')">
+                            <span>👤 Commerciaux</span>
                         </label>
                     </div>
                 </div>
@@ -226,8 +234,28 @@
             flagTypes: {
                 permanence_active: { color: "#FF1744", icon: "🚩", label: "Permanence Active", bg: "#ffcdd2" },
                 permanence_inactive: { color: "#2962FF", icon: "🏁", label: "Permanence Inactive", bg: "#bbdefb" },
-                agence: { color: "#FF9800", icon: "🏢", label: "Agence", bg: "#ffe0b2" }
-            }
+                agence: { color: "#FF9800", icon: "🏢", label: "Agence", bg: "#ffe0b2" },
+                commercial: { color: "#4CAF50", icon: "👤", label: "Commercial", bg: "#c8e6c9", noRadius: true }
+            },
+            
+            // Avatars Bitmoji disponibles pour les commerciaux
+            bitmojis: [
+                { id: "avatar1", emoji: "😊", label: "Avatar 1" },
+                { id: "avatar2", emoji: "😎", label: "Avatar 2" },
+                { id: "avatar3", emoji: "🤓", label: "Avatar 3" },
+                { id: "avatar4", emoji: "😄", label: "Avatar 4" },
+                { id: "avatar5", emoji: "🥳", label: "Avatar 5" },
+                { id: "avatar6", emoji: "🤠", label: "Avatar 6" },
+                { id: "avatar7", emoji: "👨‍💼", label: "Avatar 7" },
+                { id: "avatar8", emoji: "👩‍💼", label: "Avatar 8" },
+                { id: "avatar9", emoji: "🧑‍💻", label: "Avatar 9" },
+                { id: "avatar10", emoji: "👨‍🏫", label: "Avatar 10" },
+                { id: "avatar11", emoji: "👩‍🏫", label: "Avatar 11" },
+                { id: "avatar12", emoji: "🙋‍♂️", label: "Avatar 12" },
+                { id: "avatar13", emoji: "🙋‍♀️", label: "Avatar 13" },
+                { id: "avatar14", emoji: "💼", label: "Avatar 14" },
+                { id: "avatar15", emoji: "🎯", label: "Avatar 15" }
+            ]
         };
 
         // ============================================
@@ -249,7 +277,8 @@
                     visibleRayonTypes: {
                         permanence_active: true,
                         permanence_inactive: true,
-                        agence: true
+                        agence: true,
+                        commercial: true
                     },
                     flagMode: false,
                     editingFlagId: null
@@ -274,6 +303,7 @@
                 this.loadFromStorage();
                 this.initColorGrid();
                 this.initZoneFilters();
+                this.initBitmojiSelect();
                 this.attachEventListeners();
             }
 
@@ -312,6 +342,32 @@
                 this.state.selectedColor = hex;
                 document.querySelectorAll(".color-btn").forEach(btn => btn.classList.remove("selected"));
                 element.classList.add("selected");
+            }
+
+            // ============================================
+            // GESTION DES BITMOJIS
+            // ============================================
+            
+            initBitmojiSelect() {
+                const select = document.getElementById("bitmojiSelect");
+                
+                CONFIG.bitmojis.forEach(bitmoji => {
+                    const option = document.createElement("option");
+                    option.value = bitmoji.id;
+                    option.textContent = `${bitmoji.emoji} ${bitmoji.label}`;
+                    select.appendChild(option);
+                });
+            }
+
+            onFlagTypeChange() {
+                const type = document.getElementById("flagTypeSelect").value;
+                const bitmojiSelect = document.getElementById("bitmojiSelect");
+                
+                if (type === "commercial") {
+                    bitmojiSelect.classList.remove("hidden");
+                } else {
+                    bitmojiSelect.classList.add("hidden");
+                }
             }
 
             // ============================================
@@ -790,12 +846,24 @@
                 document.getElementById("addFlagBtn").classList.remove("hidden");
                 document.getElementById("cancelFlagBtn").classList.add("hidden");
                 document.getElementById("flagName").value = "";
+                document.getElementById("bitmojiSelect").classList.add("hidden");
+                document.getElementById("bitmojiSelect").value = "";
                 if (this.map) this.map.getContainer().style.cursor = "";
             }
 
             addFlag(latlng) {
                 const type = document.getElementById("flagTypeSelect").value;
                 const name = document.getElementById("flagName").value || "Sans nom";
+                
+                // Pour les commerciaux, récupérer le Bitmoji sélectionné
+                let bitmojiId = null;
+                if (type === "commercial") {
+                    bitmojiId = document.getElementById("bitmojiSelect").value;
+                    if (!bitmojiId) {
+                        alert("Veuillez sélectionner un avatar pour le commercial");
+                        return;
+                    }
+                }
                 
                 if (this.state.editingFlagId) {
                     // Mode édition : repositionner le drapeau
@@ -805,19 +873,28 @@
                         flag.lng = latlng.lng;
                         flag.type = type;
                         flag.name = name;
+                        if (type === "commercial") {
+                            flag.bitmojiId = bitmojiId;
+                        }
                     }
                     
                     document.getElementById("addFlagBtn").textContent = "➕ Ajouter Drapeau";
                     document.getElementById("addFlagBtn").onclick = () => this.enableFlagMode();
                 } else {
                     // Mode ajout : nouveau drapeau
-                    this.state.flags.push({
+                    const newFlag = {
                         id: Date.now(),
                         type: type,
                         name: name,
                         lat: latlng.lat,
                         lng: latlng.lng
-                    });
+                    };
+                    
+                    if (type === "commercial") {
+                        newFlag.bitmojiId = bitmojiId;
+                    }
+                    
+                    this.state.flags.push(newFlag);
                 }
                 
                 this.saveToStorage();
@@ -832,6 +909,16 @@
                 
                 document.getElementById("flagTypeSelect").value = flag.type;
                 document.getElementById("flagName").value = flag.name;
+                
+                // Afficher le sélecteur Bitmoji si c'est un commercial
+                const bitmojiSelect = document.getElementById("bitmojiSelect");
+                if (flag.type === "commercial") {
+                    bitmojiSelect.classList.remove("hidden");
+                    bitmojiSelect.value = flag.bitmojiId || "";
+                } else {
+                    bitmojiSelect.classList.add("hidden");
+                }
+                
                 this.state.editingFlagId = flagId;
                 this.state.flagMode = true;
                 
@@ -852,8 +939,22 @@
                 const flag = this.state.flags.find(f => f.id === this.state.editingFlagId);
                 if (!flag) return;
                 
-                flag.type = document.getElementById("flagTypeSelect").value;
+                const newType = document.getElementById("flagTypeSelect").value;
+                flag.type = newType;
                 flag.name = document.getElementById("flagName").value || "Sans nom";
+                
+                // Si c'est un commercial, sauvegarder le Bitmoji
+                if (newType === "commercial") {
+                    const bitmojiId = document.getElementById("bitmojiSelect").value;
+                    if (!bitmojiId) {
+                        alert("Veuillez sélectionner un avatar pour le commercial");
+                        return;
+                    }
+                    flag.bitmojiId = bitmojiId;
+                } else {
+                    // Supprimer le bitmojiId si le type a changé
+                    delete flag.bitmojiId;
+                }
                 
                 this.saveToStorage();
                 this.displayFlags();
@@ -880,8 +981,10 @@
                 this.state.flags.forEach(flag => {
                     const flagConfig = CONFIG.flagTypes[flag.type];
                     
-                    // Afficher le cercle si rayons visibles ET type activé
-                    if (this.state.rayonsVisible && this.state.visibleRayonTypes[flag.type]) {
+                    // Afficher le cercle si rayons visibles ET type activé ET pas un commercial (pas de rayon pour commerciaux)
+                    if (this.state.rayonsVisible && 
+                        this.state.visibleRayonTypes[flag.type] && 
+                        !flagConfig.noRadius) {
                         const circle = L.circle([flag.lat, flag.lng], {
                             color: flagConfig.color,
                             fillColor: flagConfig.color,
@@ -895,19 +998,35 @@
                         this.flagCircles.addLayer(circle);
                     }
                     
+                    // Déterminer l'icône à afficher
+                    let iconHtml;
+                    if (flag.type === "commercial" && flag.bitmojiId) {
+                        // Trouver le Bitmoji correspondant
+                        const bitmoji = CONFIG.bitmojis.find(b => b.id === flag.bitmojiId);
+                        iconHtml = `<div style="font-size:48px;text-shadow:2px 2px 4px rgba(0,0,0,0.5);">${bitmoji ? bitmoji.emoji : flagConfig.icon}</div>`;
+                    } else {
+                        iconHtml = `<div style="font-size:32px;text-shadow:2px 2px 4px rgba(0,0,0,0.5);">${flagConfig.icon}</div>`;
+                    }
+                    
                     // Marqueur toujours visible
                     const customIcon = L.divIcon({
                         className: 'custom-flag-marker',
-                        html: `<div style="font-size:32px;text-shadow:2px 2px 4px rgba(0,0,0,0.5);">${flagConfig.icon}</div>`,
-                        iconSize: [32, 32],
-                        iconAnchor: [16, 32]
+                        html: iconHtml,
+                        iconSize: flag.type === "commercial" ? [48, 48] : [32, 32],
+                        iconAnchor: flag.type === "commercial" ? [24, 48] : [16, 32]
                     });
                     
                     const marker = L.marker([flag.lat, flag.lng], { icon: customIcon });
-                    marker.bindPopup(
-                        `<strong>${flagConfig.icon} ${flagConfig.label}</strong><br/>` +
-                        `${flag.name}<br/><small style='color:#666;'>Rayon: 20km</small>`
-                    );
+                    
+                    // Texte du popup adapté selon le type
+                    let popupText = `<strong>${flagConfig.icon} ${flagConfig.label}</strong><br/>${flag.name}`;
+                    if (!flagConfig.noRadius) {
+                        popupText += `<br/><small style='color:#666;'>Rayon: 20km</small>`;
+                    } else {
+                        popupText += `<br/><small style='color:#666;'>📍 Lieu de résidence</small>`;
+                    }
+                    
+                    marker.bindPopup(popupText);
                     marker.on('click', function() {
                         this.openPopup();
                     });
@@ -935,7 +1054,18 @@
                     div.style.backgroundColor = flagConfig.bg;
                     
                     const span = document.createElement("span");
-                    span.innerHTML = `${flagConfig.icon} ${flag.name} <small style='color:#666;'>(20km)</small>`;
+                    
+                    // Afficher le Bitmoji si c'est un commercial
+                    let displayIcon = flagConfig.icon;
+                    if (flag.type === "commercial" && flag.bitmojiId) {
+                        const bitmoji = CONFIG.bitmojis.find(b => b.id === flag.bitmojiId);
+                        if (bitmoji) {
+                            displayIcon = bitmoji.emoji;
+                        }
+                    }
+                    
+                    const radiusText = flagConfig.noRadius ? "" : " <small style='color:#666;'>(20km)</small>";
+                    span.innerHTML = `${displayIcon} ${flag.name}${radiusText}`;
                     span.style.fontWeight = "500";
                     span.style.flex = "1";
                     span.style.cursor = "pointer";
