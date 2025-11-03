@@ -127,22 +127,60 @@
                     <h3 style="margin-bottom: 8px;">🎯 Filtre par zones</h3>
                     <p style="font-size: 13px; color: #6b7280; margin-bottom: 12px;">Cochez les zones à afficher</p>
                     
-                    <!-- Sélection rapide des régions -->
-                    <div style="background: #fff; padding: 12px; border-radius: 6px; margin-bottom: 12px; border: 2px solid #818cf8;">
-                        <div style="font-weight: 600; margin-bottom: 8px; font-size: 14px;">⚡ Sélection rapide :</div>
-                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                            <button class="btn-secondary" style="padding: 6px 12px; font-size: 13px;" onclick="app.selectAllZones()">
-                                ✓ Tout sélectionner
-                            </button>
-                            <button class="btn-secondary" style="padding: 6px 12px; font-size: 13px;" onclick="app.deselectAllZones()">
-                                ✗ Tout désélectionner
-                            </button>
-                            <button class="btn-secondary" style="padding: 6px 12px; font-size: 13px;" onclick="app.selectNordOnly()">
-                                🎯 Nord uniquement
-                            </button>
-                            <button class="btn-secondary" style="padding: 6px 12px; font-size: 13px;" onclick="app.selectNordAisne()">
-                                🎯 Nord + Aisne
-                            </button>
+                    <!-- Sélecteur de départements -->
+                    <div style="background: #fff; padding: 16px; border-radius: 8px; margin-bottom: 16px; border: 2px solid #3b82f6;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <div style="font-weight: 600; font-size: 15px;">📍 Sélection par département :</div>
+                            <div style="display: flex; gap: 8px;">
+                                <button class="btn-secondary" style="padding: 4px 10px; font-size: 12px;" onclick="app.selectAllDepartments()">
+                                    ✓ Tous
+                                </button>
+                                <button class="btn-secondary" style="padding: 4px 10px; font-size: 12px;" onclick="app.deselectAllDepartments()">
+                                    ✗ Aucun
+                                </button>
+                            </div>
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px;">
+                            <label style="display: flex; align-items: center; gap: 8px; padding: 8px; background: #f9fafb; border-radius: 6px; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#e5e7eb'" onmouseout="this.style.background='#f9fafb'">
+                                <input type="checkbox" class="dept-checkbox" data-dept="02" checked onchange="app.onDepartmentFilterChange()" style="width: 18px; height: 18px; cursor: pointer;">
+                                <span style="font-weight: 500; font-size: 14px;">02 - Aisne</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px; padding: 8px; background: #f9fafb; border-radius: 6px; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#e5e7eb'" onmouseout="this.style.background='#f9fafb'">
+                                <input type="checkbox" class="dept-checkbox" data-dept="59" checked onchange="app.onDepartmentFilterChange()" style="width: 18px; height: 18px; cursor: pointer;">
+                                <span style="font-weight: 500; font-size: 14px;">59 - Nord</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px; padding: 8px; background: #f9fafb; border-radius: 6px; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#e5e7eb'" onmouseout="this.style.background='#f9fafb'">
+                                <input type="checkbox" class="dept-checkbox" data-dept="60" checked onchange="app.onDepartmentFilterChange()" style="width: 18px; height: 18px; cursor: pointer;">
+                                <span style="font-weight: 500; font-size: 14px;">60 - Oise</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px; padding: 8px; background: #f9fafb; border-radius: 6px; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#e5e7eb'" onmouseout="this.style.background='#f9fafb'">
+                                <input type="checkbox" class="dept-checkbox" data-dept="62" checked onchange="app.onDepartmentFilterChange()" style="width: 18px; height: 18px; cursor: pointer;">
+                                <span style="font-weight: 500; font-size: 14px;">62 - Pas-de-Calais</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px; padding: 8px; background: #f9fafb; border-radius: 6px; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#e5e7eb'" onmouseout="this.style.background='#f9fafb'">
+                                <input type="checkbox" class="dept-checkbox" data-dept="80" checked onchange="app.onDepartmentFilterChange()" style="width: 18px; height: 18px; cursor: pointer;">
+                                <span style="font-weight: 500; font-size: 14px;">80 - Somme</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px; padding: 8px; background: #f9fafb; border-radius: 6px; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#e5e7eb'" onmouseout="this.style.background='#f9fafb'">
+                                <input type="checkbox" class="dept-checkbox" data-dept="14" checked onchange="app.onDepartmentFilterChange()" style="width: 18px; height: 18px; cursor: pointer;">
+                                <span style="font-weight: 500; font-size: 14px;">14 - Calvados</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px; padding: 8px; background: #f9fafb; border-radius: 6px; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#e5e7eb'" onmouseout="this.style.background='#f9fafb'">
+                                <input type="checkbox" class="dept-checkbox" data-dept="27" checked onchange="app.onDepartmentFilterChange()" style="width: 18px; height: 18px; cursor: pointer;">
+                                <span style="font-weight: 500; font-size: 14px;">27 - Eure</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px; padding: 8px; background: #f9fafb; border-radius: 6px; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#e5e7eb'" onmouseout="this.style.background='#f9fafb'">
+                                <input type="checkbox" class="dept-checkbox" data-dept="50" checked onchange="app.onDepartmentFilterChange()" style="width: 18px; height: 18px; cursor: pointer;">
+                                <span style="font-weight: 500; font-size: 14px;">50 - Manche</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px; padding: 8px; background: #f9fafb; border-radius: 6px; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#e5e7eb'" onmouseout="this.style.background='#f9fafb'">
+                                <input type="checkbox" class="dept-checkbox" data-dept="61" checked onchange="app.onDepartmentFilterChange()" style="width: 18px; height: 18px; cursor: pointer;">
+                                <span style="font-weight: 500; font-size: 14px;">61 - Orne</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px; padding: 8px; background: #f9fafb; border-radius: 6px; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#e5e7eb'" onmouseout="this.style.background='#f9fafb'">
+                                <input type="checkbox" class="dept-checkbox" data-dept="76" checked onchange="app.onDepartmentFilterChange()" style="width: 18px; height: 18px; cursor: pointer;">
+                                <span style="font-weight: 500; font-size: 14px;">76 - Seine-Maritime</span>
+                            </label>
                         </div>
                     </div>
                     
@@ -296,6 +334,10 @@
                     selectedColor: "#FF6B6B",
                     currentView: "list",
                     activeZoneFilters: {},
+                    activeDepartments: {
+                        "02": true, "59": true, "60": true, "62": true, "80": true,
+                        "14": true, "27": true, "50": true, "61": true, "76": true
+                    },
                     zonesVisible: true,
                     rayonsVisible: true,
                     visibleRayonTypes: {
@@ -523,9 +565,38 @@
             }
 
             // ============================================
-            // SÉLECTION RAPIDE DES ZONES
+            // SÉLECTION PAR DÉPARTEMENTS
             // ============================================
             
+            selectAllDepartments() {
+                document.querySelectorAll('.dept-checkbox').forEach(checkbox => {
+                    checkbox.checked = true;
+                    this.state.activeDepartments[checkbox.dataset.dept] = true;
+                });
+                this.onDepartmentFilterChange();
+            }
+
+            deselectAllDepartments() {
+                document.querySelectorAll('.dept-checkbox').forEach(checkbox => {
+                    checkbox.checked = false;
+                    this.state.activeDepartments[checkbox.dataset.dept] = false;
+                });
+                this.onDepartmentFilterChange();
+            }
+
+            onDepartmentFilterChange() {
+                // Mettre à jour l'état des départements actifs
+                document.querySelectorAll('.dept-checkbox').forEach(checkbox => {
+                    this.state.activeDepartments[checkbox.dataset.dept] = checkbox.checked;
+                });
+                
+                // Mettre à jour l'affichage
+                this.updatePostalGrid();
+                if (this.map && this.geoDataCache) {
+                    this.updateMapColors();
+                }
+            }
+
             selectAllZones() {
                 Object.keys(this.state.activeZoneFilters).forEach(zoneName => {
                     this.state.activeZoneFilters[zoneName] = true;
@@ -538,32 +609,6 @@
             deselectAllZones() {
                 Object.keys(this.state.activeZoneFilters).forEach(zoneName => {
                     this.state.activeZoneFilters[zoneName] = false;
-                });
-                this.updateZoneCheckboxes();
-                this.updatePostalGrid();
-                if (this.map && this.geoDataCache) this.updateMapColors();
-            }
-
-            selectNordOnly() {
-                // Détecter les zones qui contiennent "Nord" dans leur nom
-                Object.keys(this.state.activeZoneFilters).forEach(zoneName => {
-                    this.state.activeZoneFilters[zoneName] = 
-                        zoneName.toLowerCase().includes('nord') || 
-                        zoneName.toLowerCase().includes('lille') ||
-                        zoneName.toLowerCase().includes('59');
-                });
-                this.updateZoneCheckboxes();
-                this.updatePostalGrid();
-                if (this.map && this.geoDataCache) this.updateMapColors();
-            }
-
-            selectNordAisne() {
-                // Détecter les zones Nord et Aisne
-                Object.keys(this.state.activeZoneFilters).forEach(zoneName => {
-                    const lower = zoneName.toLowerCase();
-                    this.state.activeZoneFilters[zoneName] = 
-                        lower.includes('nord') || lower.includes('lille') || lower.includes('59') ||
-                        lower.includes('aisne') || lower.includes('02');
                 });
                 this.updateZoneCheckboxes();
                 this.updatePostalGrid();
@@ -598,7 +643,10 @@
                     const zone = this.state.zones[item.cp];
                     const matchZone = !zone || this.state.activeZoneFilters[zone.name];
                     
-                    return matchDept && matchSearch && matchZone;
+                    // Nouveau: filtre par département actif
+                    const matchActiveDept = this.state.activeDepartments[item.dept];
+                    
+                    return matchDept && matchSearch && matchZone && matchActiveDept;
                 });
 
                 // Grouper par code postal
@@ -845,6 +893,13 @@
                     
                     for (let i = index; i < end; i++) {
                         const cp = cps[i];
+                        const dept = cp.substring(0, 2);
+                        
+                        // Ne pas afficher si le département n'est pas sélectionné
+                        if (!this.state.activeDepartments[dept]) {
+                            continue;
+                        }
+                        
                         const cpData = this.geoDataCache[cp];
                         const zone = this.state.zones[cp];
                         
@@ -854,17 +909,17 @@
                             color = "#e5e7eb"; // Gris pour zone décochée
                             fillOpacity = 0.3;
                             strokeWeight = 1;
-                            strokeColor = "#999";
+                            strokeColor = "#ccc";
                         } else if (zone) {
                             color = zone.color;
                             fillOpacity = 0.7;
-                            strokeWeight = 3; // Contour plus épais pour les zones colorées
-                            strokeColor = "#000"; // Contour noir
+                            strokeWeight = 1; // Contour fin à l'intérieur des zones
+                            strokeColor = "#000"; // Contour noir mais fin
                         } else {
                             color = "#e5e7eb";
                             fillOpacity = 0.3;
                             strokeWeight = 1;
-                            strokeColor = "#999";
+                            strokeColor = "#ccc";
                         }
                         
                         cpData.geometries.forEach(geom => {
@@ -872,7 +927,8 @@
                                 type: "Feature",
                                 properties: { 
                                     cp: cp,
-                                    commune: geom.commune
+                                    commune: geom.commune,
+                                    dept: dept
                                 },
                                 geometry: {
                                     type: geom.type,
@@ -910,10 +966,63 @@
                     
                     if (index < cps.length) {
                         requestAnimationFrame(displayBatch);
+                    } else {
+                        // Une fois tous les polygones affichés, ajouter les contours de départements
+                        this.addDepartmentBorders();
                     }
                 };
                 
                 displayBatch();
+            }
+
+            // Ajouter les contours épais entre départements
+            addDepartmentBorders() {
+                // Créer un groupe de départements pour tracer les contours
+                const deptBoundaries = {};
+                
+                Object.entries(this.geoDataCache).forEach(([cp, cpData]) => {
+                    const dept = cp.substring(0, 2);
+                    
+                    if (!this.state.activeDepartments[dept]) return;
+                    
+                    if (!deptBoundaries[dept]) {
+                        deptBoundaries[dept] = [];
+                    }
+                    
+                    cpData.geometries.forEach(geom => {
+                        deptBoundaries[dept].push({
+                            type: geom.type,
+                            coordinates: geom.coords
+                        });
+                    });
+                });
+                
+                // Pour chaque département, créer un contour global épais
+                Object.entries(deptBoundaries).forEach(([dept, geometries]) => {
+                    geometries.forEach(geom => {
+                        const feature = {
+                            type: "Feature",
+                            properties: { dept: dept },
+                            geometry: {
+                                type: geom.type,
+                                coordinates: geom.coordinates
+                            }
+                        };
+                        
+                        // Contour noir épais UNIQUEMENT (sans remplissage)
+                        const borderLayer = L.geoJSON(feature, {
+                            style: {
+                                fillOpacity: 0, // Pas de remplissage
+                                color: "#000", // Noir
+                                weight: 4, // Épais
+                                opacity: 0.8
+                            },
+                            interactive: false // Ne pas interagir avec ces contours
+                        });
+                        
+                        this.geoLayerGroup.addLayer(borderLayer);
+                    });
+                });
             }
 
             updateMapColors() {
