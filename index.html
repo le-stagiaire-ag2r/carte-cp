@@ -213,6 +213,7 @@
                     <button class="btn-red hidden" id="cancelFlagBtn" onclick="app.disableFlagMode()">❌ Annuler</button>
                     <button class="btn-purple" onclick="app.toggleZonesVisibility()">👁️ Masquer/Afficher Zones</button>
                     <button class="btn-purple" onclick="app.toggleRayonsVisibility()">⭕ Masquer/Afficher Rayons</button>
+                    <button class="btn-blue" onclick="app.toggleLabelsVisibility()">🏷️ Masquer/Afficher Noms</button>
                 </div>
                 <div id="flagModeInfo" class="hidden" style="background:#fff3cd;padding:8px;border-radius:4px;margin-bottom:8px;font-size:13px;">
                     <strong>Mode placement activé :</strong> Cliquez sur la carte pour placer le drapeau (rayon de 20km automatique)
@@ -342,6 +343,7 @@
                     },
                     zonesVisible: true,
                     rayonsVisible: true,
+                    labelsVisible: true, // NOUVEAU : labels des drapeaux
                     visibleRayonTypes: {
                         permanence_active: true,
                         permanence_inactive: true,
@@ -1220,12 +1222,37 @@
                         iconHtml = `<div style="font-size:32px;text-shadow:2px 2px 4px rgba(0,0,0,0.5);">${flagConfig.icon}</div>`;
                     }
                     
+                    // NOUVEAU : Ajouter le nom en dessous si labels visibles
+                    if (this.state.labelsVisible) {
+                        const labelStyle = `
+                            background: white;
+                            padding: 4px 8px;
+                            border-radius: 4px;
+                            font-weight: bold;
+                            font-size: 12px;
+                            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+                            white-space: nowrap;
+                            margin-top: 4px;
+                            border: 2px solid ${flagConfig.color};
+                            color: #000;
+                        `;
+                        
+                        iconHtml = `
+                            <div style="display: flex; flex-direction: column; align-items: center;">
+                                ${iconHtml}
+                                <div style="${labelStyle}">${flag.name}</div>
+                            </div>
+                        `;
+                    }
+                    
                     // Marqueur toujours visible
                     const customIcon = L.divIcon({
                         className: 'custom-flag-marker',
                         html: iconHtml,
                         iconSize: flag.type === "commercial" ? [48, 48] : [32, 32],
-                        iconAnchor: flag.type === "commercial" ? [24, 48] : [16, 32]
+                        iconAnchor: flag.type === "commercial" ? 
+                            (this.state.labelsVisible ? [24, 72] : [24, 48]) : 
+                            (this.state.labelsVisible ? [16, 56] : [16, 32])
                     });
                     
                     const marker = L.marker([flag.lat, flag.lng], { icon: customIcon });
@@ -1324,6 +1351,11 @@
 
             toggleRayonsVisibility() {
                 this.state.rayonsVisible = !this.state.rayonsVisible;
+                this.displayFlags();
+            }
+
+            toggleLabelsVisibility() {
+                this.state.labelsVisible = !this.state.labelsVisible;
                 this.displayFlags();
             }
 
