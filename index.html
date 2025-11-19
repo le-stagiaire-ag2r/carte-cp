@@ -38,28 +38,93 @@
         .postal-zone { font-size: 11px; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .stats { text-align: right; color: #6b7280; font-size: 14px; flex: 1; }
         .upload-box { background: #dbeafe; border: 2px solid #93c5fd; padding: 24px; border-radius: 8px; text-align: center; }
-        .hidden { display: none; }
+        .hidden { display: none !important; }
         .progress-bar { width: 100%; height: 24px; background: #e5e7eb; border-radius: 12px; overflow: hidden; margin: 16px 0; }
         .progress-fill { height: 100%; background: linear-gradient(90deg, #3b82f6, #10b981); transition: width 0.3s; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 12px; }
         .loading-text { text-align: center; color: #6b7280; margin-top: 8px; }
         .flag-section { background: #fef3c7; border: 2px solid #fbbf24; padding: 16px; border-radius: 8px; margin-bottom: 16px; }
         .flag-controls { display: flex; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; align-items: center; }
-        .flag-mode-btn { padding: 8px 16px; border: 2px solid #000; border-radius: 6px; cursor: pointer; font-weight: bold; transition: all 0.2s; }
-        .flag-mode-btn.active { transform: scale(1.1); box-shadow: 0 0 10px rgba(0,0,0,0.3); }
         .flag-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; margin-top: 12px; }
         .flag-item { padding: 10px; border: 2px solid #000; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; }
         .flag-delete { background: #ef4444; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; }
-        .flag-filters { background: #fff; border: 2px solid #fbbf24; padding: 12px; border-radius: 6px; margin-top: 12px; }
-        .flag-filter-checkboxes { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 8px; }
-        .flag-filter-item { display: flex; align-items: center; gap: 6px; cursor: pointer; }
-        .flag-filter-item input[type="checkbox"] { cursor: pointer; width: 18px; height: 18px; }
         .zone-filter { background: #e0e7ff; border: 2px solid #818cf8; padding: 16px; border-radius: 8px; margin-bottom: 16px; }
         .zone-checkboxes { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; margin-top: 12px; }
         .zone-checkbox-item { display: flex; align-items: center; gap: 8px; padding: 8px; background: white; border-radius: 6px; cursor: pointer; }
         .zone-checkbox-item:hover { background: #f3f4f6; }
         .zone-checkbox-item input[type="checkbox"] { cursor: pointer; width: 18px; height: 18px; }
         .zone-color-indicator { width: 24px; height: 24px; border-radius: 4px; border: 2px solid #000; }
-        @media (max-width: 768px) { .grid-2 { grid-template-columns: 1fr; } }
+        
+        /* Styles du panel d'affichage */
+        #displayPanel {
+            background: #e5f2ff;
+            border: 2px solid #3b82f6;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+        }
+        
+        #displayPanel h4 {
+            margin-bottom: 12px;
+            font-size: 15px;
+            font-weight: 600;
+        }
+        
+        #displayPanel .section {
+            margin-bottom: 16px;
+        }
+        
+        #displayPanel .section-title {
+            font-weight: 600;
+            font-size: 13px;
+            color: #374151;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        #displayPanel .filter-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 10px;
+        }
+        
+        #displayPanel label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px;
+            background: white;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin: 0;
+        }
+        
+        #displayPanel label:hover {
+            background: #f3f4f6;
+        }
+        
+        #displayPanel label input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            margin: 0;
+        }
+        
+        #displayPanel label span {
+            font-weight: 500;
+            font-size: 13px;
+        }
+        
+        .separator {
+            border-top: 2px solid #d1d5db;
+            margin: 16px 0;
+        }
+        
+        @media (max-width: 768px) { 
+            .grid-2 { grid-template-columns: 1fr; }
+            #displayPanel .filter-grid { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
 <body>
@@ -211,37 +276,89 @@
                     </select>
                     <button class="btn-green" id="addFlagBtn" onclick="app.enableFlagMode()">➕ Ajouter Drapeau</button>
                     <button class="btn-red hidden" id="cancelFlagBtn" onclick="app.disableFlagMode()">❌ Annuler</button>
-                    <button class="btn-purple" onclick="app.toggleZonesVisibility()">👁️ Masquer/Afficher Zones</button>
-                    <button class="btn-purple" onclick="app.toggleRayonsVisibility()">⭕ Masquer/Afficher Rayons</button>
-                    <button class="btn-blue" onclick="app.toggleLabelsVisibility()">🏷️ Masquer/Afficher Noms</button>
+                    <button class="btn-blue" id="toggleDisplayPanelBtn" onclick="app.toggleDisplayPanel()">👁️ Affichage</button>
                 </div>
+                
+                <!-- PANEL D'AFFICHAGE UNIQUE -->
+                <div id="displayPanel" class="hidden">
+                    <h4>👁️ Paramètres d'affichage</h4>
+                    
+                    <!-- Section 1: Carte & Zones -->
+                    <div class="section">
+                        <div class="section-title">🗺️ Carte & Zones</div>
+                        <div class="filter-grid">
+                            <label>
+                                <input type="checkbox" id="checkZones" checked onchange="app.toggleZonesVisibility()">
+                                <span>🎨 Zones colorées</span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Section 2: Drapeaux & Rayons -->
+                    <div class="section">
+                        <div class="section-title">📍 Drapeaux & Rayons</div>
+                        <div class="filter-grid">
+                            <label>
+                                <input type="checkbox" id="checkRayons" checked onchange="app.toggleRayonsVisibility()">
+                                <span>⭕ Rayons (20km)</span>
+                            </label>
+                            <label>
+                                <input type="checkbox" id="checkLabels" checked onchange="app.toggleLabelsVisibility()">
+                                <span>🏷️ Noms des drapeaux</span>
+                            </label>
+                            <label>
+                                <input type="checkbox" id="showPermanenceActiveDrapeaux" checked onchange="app.toggleDrapeauAndRayon('permanence_active')">
+                                <span>🚩 Perm. Actives</span>
+                            </label>
+                            <label>
+                                <input type="checkbox" id="showPermanenceInactiveDrapeaux" checked onchange="app.toggleDrapeauAndRayon('permanence_inactive')">
+                                <span>🏁 Perm. Inactives</span>
+                            </label>
+                            <label>
+                                <input type="checkbox" id="filterAgence2" checked onchange="app.toggleDrapeauAndRayon('agence')">
+                                <span>🏢 Agences</span>
+                            </label>
+                            <label>
+                                <input type="checkbox" id="filterCommercial2" checked onchange="app.toggleDrapeauAndRayon('commercial')">
+                                <span>👤 Commerciaux</span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="separator"></div>
+                    
+                    <!-- Section 3: Rayons par zone -->
+                    <div class="section">
+                        <div class="section-title">⭕ Rayons par zone</div>
+                        <div class="filter-grid">
+                            <label>
+                                <input type="checkbox" id="filterPermanenceActive2" checked onchange="app.toggleRayonType('permanence_active')">
+                                <span>🚩 Permanences Actives</span>
+                            </label>
+                            <label>
+                                <input type="checkbox" id="filterPermanenceInactive2" checked onchange="app.toggleRayonType('permanence_inactive')">
+                                <span>🏁 Permanences Inactives</span>
+                            </label>
+                            <label>
+                                <input type="checkbox" id="filterAgence" checked onchange="app.toggleRayonType('agence')">
+                                <span>🏢 Agences</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                
                 <div id="flagModeInfo" class="hidden" style="background:#fff3cd;padding:8px;border-radius:4px;margin-bottom:8px;font-size:13px;">
                     <strong>Mode placement activé :</strong> Cliquez sur la carte pour placer le drapeau (rayon de 20km automatique)
                 </div>
                 
-                <div class="flag-filters">
-                    <h4 style="margin-bottom: 8px; font-size: 14px;">🎯 Filtrer les rayons par type :</h4>
-                    <div class="flag-filter-checkboxes">
-                        <label class="flag-filter-item">
-                            <input type="checkbox" id="filterPermanenceActive" checked onchange="app.toggleRayonType('permanence_active')">
-                            <span>🚩 Permanences Actives</span>
-                        </label>
-                        <label class="flag-filter-item">
-                            <input type="checkbox" id="filterPermanenceInactive" checked onchange="app.toggleRayonType('permanence_inactive')">
-                            <span>🏁 Permanences Inactives</span>
-                        </label>
-                        <label class="flag-filter-item">
-                            <input type="checkbox" id="filterAgence" checked onchange="app.toggleRayonType('agence')">
-                            <span>🏢 Agences</span>
-                        </label>
-                        <label class="flag-filter-item">
-                            <input type="checkbox" id="filterCommercial" checked onchange="app.toggleRayonType('commercial')">
-                            <span>👤 Commerciaux</span>
-                        </label>
-                    </div>
+                <!-- ACCORDÉON POUR LES DRAPEAUX -->
+                <div style="background: #ffe0b2; border: 2px solid #FF9800; padding: 12px; border-radius: 8px; margin-bottom: 8px;">
+                    <button onclick="app.toggleFlagListAccordion()" style="width: 100%; padding: 12px; border: none; background: #FF9800; color: white; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 14px; display: flex; justify-content: space-between; align-items: center;">
+                        <span>🚩 Drapeaux placés (<span id="flagCount">0</span>)</span>
+                        <span id="accordionArrow" style="font-size: 18px;">▼</span>
+                    </button>
+                    <div id="flagListContainer" class="flag-list" style="margin-top: 12px;"></div>
                 </div>
-                
-                <div class="flag-list" id="flagList"></div>
             </div>
             
             <div id="loadingSection" class="hidden">
@@ -272,10 +389,8 @@
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <!-- Bibliothèques pour l'export PNG -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-image/0.4.0/leaflet-image.js"></script>
-    <!-- Turf.js pour la fusion de polygones -->
     <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
     <script>
         // ============================================
@@ -303,7 +418,6 @@
                 commercial: { color: "#4CAF50", icon: "👤", label: "Commercial", bg: "#c8e6c9", noRadius: true }
             },
             
-            // Avatars Bitmoji disponibles pour les commerciaux
             bitmojis: [
                 { id: "avatar1", emoji: "👨‍💼", label: "Avatar 1" },
                 { id: "avatar2", emoji: "👩‍💼", label: "Avatar 2" },
@@ -316,7 +430,6 @@
         
         class CarteZonesApp {
             constructor() {
-                // État de l'application
                 this.state = {
                     postalData: [],
                     zones: {},
@@ -330,22 +443,29 @@
                     },
                     zonesVisible: true,
                     rayonsVisible: true,
-                    labelsVisible: true, // NOUVEAU : labels des drapeaux
+                    labelsVisible: true,
+                    bitmojisVisible: true,
                     visibleRayonTypes: {
                         permanence_active: true,
                         permanence_inactive: true,
                         agence: true,
                         commercial: true
                     },
+                    visibleFlagTypes: {
+                        permanence_active: true,
+                        permanence_inactive: true,
+                        agence: true,
+                        commercial: true
+                    },
                     flagMode: false,
-                    editingFlagId: null
+                    editingFlagId: null,
+                    displayPanelOpen: false
                 };
 
-                // Composants carte
                 this.map = null;
                 this.geoLayerGroup = null;
                 this.geoDataCache = null;
-                this.departmentBorders = null; // NOUVEAU : couche pour les contours de départements
+                this.departmentBorders = null;
                 this.isLoadingGeo = false;
                 this.flagMarkers = L.layerGroup();
                 this.flagCircles = L.layerGroup();
@@ -353,10 +473,6 @@
                 this.init();
             }
 
-            // ============================================
-            // INITIALISATION
-            // ============================================
-            
             init() {
                 this.loadFromStorage();
                 this.initColorGrid();
@@ -369,6 +485,21 @@
                 document.getElementById("fileInput").addEventListener("change", (e) => this.handleFileUpload(e));
                 document.getElementById("searchInput").addEventListener("input", () => this.updatePostalGrid());
                 document.getElementById("deptSelect").addEventListener("change", () => this.updatePostalGrid());
+            }
+
+            // ============================================
+            // TOGGLE PANEL AFFICHAGE
+            // ============================================
+            
+            toggleDisplayPanel() {
+                this.state.displayPanelOpen = !this.state.displayPanelOpen;
+                const panel = document.getElementById("displayPanel");
+                
+                if (this.state.displayPanelOpen) {
+                    panel.classList.remove("hidden");
+                } else {
+                    panel.classList.add("hidden");
+                }
             }
 
             // ============================================
@@ -454,7 +585,6 @@
                         const commune = parts[0].trim();
                         let cp = parts[1].trim();
                         
-                        // Ajouter le 0 si code postal à 4 chiffres
                         if (cp.length === 4 && !isNaN(cp)) {
                             cp = "0" + cp;
                         }
@@ -531,7 +661,7 @@
                     const checkbox = document.createElement("input");
                     checkbox.type = "checkbox";
                     checkbox.checked = this.state.activeZoneFilters[zoneName];
-                    checkbox.dataset.zoneName = zoneName; // Ajouter pour sélection rapide
+                    checkbox.dataset.zoneName = zoneName;
                     checkbox.onchange = (e) => {
                         this.state.activeZoneFilters[zoneName] = e.target.checked;
                         this.updatePostalGrid();
@@ -556,10 +686,6 @@
                 container.appendChild(fragment);
             }
 
-            // ============================================
-            // SÉLECTION PAR DÉPARTEMENTS
-            // ============================================
-            
             selectAllDepartments() {
                 document.querySelectorAll('.dept-checkbox').forEach(checkbox => {
                     checkbox.checked = true;
@@ -577,18 +703,15 @@
             }
 
             onDepartmentFilterChange() {
-                // Mettre à jour l'état des départements actifs
                 document.querySelectorAll('.dept-checkbox').forEach(checkbox => {
                     this.state.activeDepartments[checkbox.dataset.dept] = checkbox.checked;
                 });
                 
-                // Mettre à jour l'affichage
                 this.updatePostalGrid();
                 if (this.map && this.geoDataCache) {
                     this.updateMapColors();
                 }
                 
-                // Mettre à jour aussi les contours de départements
                 if (this.map && this.departmentBordersData) {
                     this.displayDepartmentBorders();
                 }
@@ -613,7 +736,6 @@
             }
 
             updateZoneCheckboxes() {
-                // Mettre à jour l'état des checkboxes
                 document.querySelectorAll('.zone-checkbox-item input[type="checkbox"]').forEach(checkbox => {
                     const zoneName = checkbox.dataset.zoneName;
                     if (zoneName) {
@@ -630,7 +752,6 @@
                 const search = document.getElementById("searchInput").value.toLowerCase();
                 const dept = document.getElementById("deptSelect").value;
                 
-                // Filtrer les données
                 const filtered = this.state.postalData.filter(item => {
                     const matchDept = dept === "all" || item.dept === dept;
                     const matchSearch = !search || 
@@ -639,21 +760,17 @@
                     
                     const zone = this.state.zones[item.cp];
                     const matchZone = !zone || this.state.activeZoneFilters[zone.name];
-                    
-                    // Nouveau: filtre par département actif
                     const matchActiveDept = this.state.activeDepartments[item.dept];
                     
                     return matchDept && matchSearch && matchZone && matchActiveDept;
                 });
 
-                // Grouper par code postal
                 const grouped = filtered.reduce((acc, item) => {
                     if (!acc[item.cp]) acc[item.cp] = [];
                     acc[item.cp].push(item.commune);
                     return acc;
                 }, {});
 
-                // Afficher
                 const grid = document.getElementById("postalGrid");
                 grid.innerHTML = "";
                 const sortedCps = Object.keys(grouped).sort();
@@ -741,13 +858,10 @@
                     updateWhenZooming: false
                 }).addTo(this.map);
                 
-                // Ordre d'affichage : géométries en bas, cercles au milieu, contours départements, marqueurs en haut
                 this.geoLayerGroup = L.layerGroup().addTo(this.map);
                 this.flagCircles.addTo(this.map);
-                // departmentBorders sera ajouté après dans displayDepartmentBorders()
                 this.flagMarkers.addTo(this.map);
                 
-                // Gestion des événements carte
                 this.map.on('movestart', () => {
                     this.map.closePopup();
                     this.map.eachLayer(layer => {
@@ -849,12 +963,10 @@
             simplifyCoordinates(coords, tolerance) {
                 if (!coords || coords.length === 0) return coords;
                 
-                // Si c'est un point simple [lon, lat]
                 if (typeof coords[0] === 'number') {
                     return coords;
                 }
                 
-                // Si c'est un array de points [[lon, lat], [lon, lat], ...]
                 if (Array.isArray(coords[0]) && typeof coords[0][0] === 'number') {
                     if (coords.length <= 12) return coords;
                     
@@ -869,7 +981,6 @@
                     return simplified;
                 }
                 
-                // Récursion pour les polygones complexes
                 return coords.map(c => this.simplifyCoordinates(c, tolerance));
             }
 
@@ -893,7 +1004,6 @@
                         const cp = cps[i];
                         const dept = cp.substring(0, 2);
                         
-                        // Ne pas afficher si le département n'est pas sélectionné
                         if (!this.state.activeDepartments[dept]) {
                             continue;
                         }
@@ -901,10 +1011,9 @@
                         const cpData = this.geoDataCache[cp];
                         const zone = this.state.zones[cp];
                         
-                        // Déterminer la couleur (COMME AVANT)
                         let color;
                         if (zone && !this.state.activeZoneFilters[zone.name]) {
-                            color = "#e5e7eb"; // Gris pour zone décochée
+                            color = "#e5e7eb";
                         } else {
                             color = zone ? zone.color : "#e5e7eb";
                         }
@@ -953,7 +1062,6 @@
                     if (index < cps.length) {
                         requestAnimationFrame(displayBatch);
                     } else {
-                        // Une fois terminé, afficher les contours de départements PAR-DESSUS
                         this.displayDepartmentBorders();
                     }
                 };
@@ -961,31 +1069,27 @@
                 displayBatch();
             }
 
-            // NOUVEAU : Afficher les contours de départements par-dessus les polygones
             async displayDepartmentBorders() {
-                // Si pas encore chargé, charger les contours
                 if (!this.departmentBordersData) {
                     await this.loadDepartmentBorders();
                 }
                 
-                // Créer ou nettoyer la couche des contours
                 if (this.departmentBorders) {
                     this.departmentBorders.clearLayers();
                 } else {
                     this.departmentBorders = L.layerGroup().addTo(this.map);
                 }
                 
-                // Afficher uniquement les départements sélectionnés
                 Object.entries(this.departmentBordersData || {}).forEach(([dept, geoJson]) => {
                     if (this.state.activeDepartments[dept]) {
                         const borderLayer = L.geoJSON(geoJson, {
                             style: {
-                                fillOpacity: 0, // Pas de remplissage, juste le contour
-                                color: "#000", // Noir
-                                weight: 5, // Épais
+                                fillOpacity: 0,
+                                color: "#000",
+                                weight: 5,
                                 opacity: 1
                             },
-                            interactive: false // Ne pas cliquer dessus
+                            interactive: false
                         });
                         
                         this.departmentBorders.addLayer(borderLayer);
@@ -993,12 +1097,9 @@
                 });
             }
 
-            // NOUVEAU : Charger les contours de départements depuis l'API
             async loadDepartmentBorders() {
                 this.departmentBordersData = {};
                 const depts = Object.keys(CONFIG.departments);
-                
-                console.log("Chargement des contours de départements...");
                 
                 for (const dept of depts) {
                     try {
@@ -1009,18 +1110,11 @@
                         if (response.ok) {
                             const data = await response.json();
                             this.departmentBordersData[dept] = data;
-                            console.log(`Contour ${dept} chargé`);
                         }
                     } catch (error) {
                         console.log(`Erreur chargement contour ${dept}:`, error);
                     }
                 }
-                
-                console.log("Contours de départements chargés !");
-            }
-
-            addDepartmentBorders(deptPolygons) {
-                // Cette méthode n'est plus utilisée
             }
 
             updateMapColors() {
@@ -1056,7 +1150,6 @@
                 const type = document.getElementById("flagTypeSelect").value;
                 const name = document.getElementById("flagName").value || "Sans nom";
                 
-                // Pour les commerciaux, récupérer le Bitmoji sélectionné
                 let bitmojiId = null;
                 if (type === "commercial") {
                     bitmojiId = document.getElementById("bitmojiSelect").value;
@@ -1067,7 +1160,6 @@
                 }
                 
                 if (this.state.editingFlagId) {
-                    // Mode édition : repositionner le drapeau
                     const flag = this.state.flags.find(f => f.id === this.state.editingFlagId);
                     if (flag) {
                         flag.lat = latlng.lat;
@@ -1082,7 +1174,6 @@
                     document.getElementById("addFlagBtn").textContent = "➕ Ajouter Drapeau";
                     document.getElementById("addFlagBtn").onclick = () => this.enableFlagMode();
                 } else {
-                    // Mode ajout : nouveau drapeau
                     const newFlag = {
                         id: Date.now(),
                         type: type,
@@ -1111,7 +1202,6 @@
                 document.getElementById("flagTypeSelect").value = flag.type;
                 document.getElementById("flagName").value = flag.name;
                 
-                // Afficher le sélecteur Bitmoji si c'est un commercial
                 const bitmojiSelect = document.getElementById("bitmojiSelect");
                 if (flag.type === "commercial") {
                     bitmojiSelect.classList.remove("hidden");
@@ -1144,7 +1234,6 @@
                 flag.type = newType;
                 flag.name = document.getElementById("flagName").value || "Sans nom";
                 
-                // Si c'est un commercial, sauvegarder le Bitmoji
                 if (newType === "commercial") {
                     const bitmojiId = document.getElementById("bitmojiSelect").value;
                     if (!bitmojiId) {
@@ -1153,7 +1242,6 @@
                     }
                     flag.bitmojiId = bitmojiId;
                 } else {
-                    // Supprimer le bitmojiId si le type a changé
                     delete flag.bitmojiId;
                 }
                 
@@ -1182,7 +1270,7 @@
                 this.state.flags.forEach(flag => {
                     const flagConfig = CONFIG.flagTypes[flag.type];
                     
-                    // Afficher le cercle si rayons visibles ET type activé ET pas un commercial (pas de rayon pour commerciaux)
+                    // Afficher le rayon selon les paramètres de rayon
                     if (this.state.rayonsVisible && 
                         this.state.visibleRayonTypes[flag.type] && 
                         !flagConfig.noRadius) {
@@ -1199,17 +1287,22 @@
                         this.flagCircles.addLayer(circle);
                     }
                     
-                    // Déterminer l'icône à afficher
+                    // Afficher le drapeau selon visibleFlagTypes
+                    if (!this.state.visibleFlagTypes[flag.type]) {
+                        return; // Passer au drapeau suivant sans l'afficher
+                    }
+                    
                     let iconHtml;
-                    if (flag.type === "commercial" && flag.bitmojiId) {
-                        // Trouver le Bitmoji correspondant
+                    let isBitmojiVisible = false;
+                    
+                    if (flag.type === "commercial" && flag.bitmojiId && this.state.bitmojisVisible) {
                         const bitmoji = CONFIG.bitmojis.find(b => b.id === flag.bitmojiId);
                         iconHtml = `<div style="font-size:48px;text-shadow:2px 2px 4px rgba(0,0,0,0.5);">${bitmoji ? bitmoji.emoji : flagConfig.icon}</div>`;
+                        isBitmojiVisible = true;
                     } else {
                         iconHtml = `<div style="font-size:32px;text-shadow:2px 2px 4px rgba(0,0,0,0.5);">${flagConfig.icon}</div>`;
                     }
                     
-                    // NOUVEAU : Ajouter le nom en dessous si labels visibles
                     if (this.state.labelsVisible) {
                         const labelStyle = `
                             background: white;
@@ -1232,19 +1325,17 @@
                         `;
                     }
                     
-                    // Marqueur toujours visible
                     const customIcon = L.divIcon({
                         className: 'custom-flag-marker',
                         html: iconHtml,
-                        iconSize: flag.type === "commercial" ? [48, 48] : [32, 32],
-                        iconAnchor: flag.type === "commercial" ? 
+                        iconSize: isBitmojiVisible ? [48, 48] : [32, 32],
+                        iconAnchor: isBitmojiVisible ? 
                             (this.state.labelsVisible ? [24, 72] : [24, 48]) : 
                             (this.state.labelsVisible ? [16, 56] : [16, 32])
                     });
                     
                     const marker = L.marker([flag.lat, flag.lng], { icon: customIcon });
                     
-                    // Texte du popup adapté selon le type
                     let popupText = `<strong>${flagConfig.icon} ${flagConfig.label}</strong><br/>${flag.name}`;
                     if (!flagConfig.noRadius) {
                         popupText += `<br/><small style='color:#666;'>Rayon: 20km</small>`;
@@ -1261,12 +1352,26 @@
                 });
             }
 
+            toggleFlagListAccordion() {
+                const container = document.getElementById("flagListContainer");
+                const arrow = document.getElementById("accordionArrow");
+                
+                if (container.style.display === "none") {
+                    container.style.display = "grid";
+                    arrow.textContent = "▲";
+                } else {
+                    container.style.display = "none";
+                    arrow.textContent = "▼";
+                }
+            }
+
             updateFlagList() {
-                const container = document.getElementById("flagList");
+                const container = document.getElementById("flagListContainer");
+                document.getElementById("flagCount").textContent = this.state.flags.length;
                 container.innerHTML = "";
                 
                 if (this.state.flags.length === 0) {
-                    container.innerHTML = '<p style="color:#6b7280;font-size:13px;">Aucun drapeau placé</p>';
+                    container.style.display = "none";
                     return;
                 }
                 
@@ -1281,9 +1386,9 @@
                     
                     const span = document.createElement("span");
                     
-                    // Afficher le Bitmoji si c'est un commercial
                     let displayIcon = flagConfig.icon;
-                    if (flag.type === "commercial" && flag.bitmojiId) {
+                    // Si c'est un commercial avec bitmoji ET que les avatars sont visibles, afficher le bitmoji
+                    if (flag.type === "commercial" && flag.bitmojiId && this.state.bitmojisVisible) {
                         const bitmoji = CONFIG.bitmojis.find(b => b.id === flag.bitmojiId);
                         if (bitmoji) {
                             displayIcon = bitmoji.emoji;
@@ -1346,9 +1451,46 @@
                 this.displayFlags();
             }
 
+            toggleBitmojisVisibility() {
+                this.state.bitmojisVisible = !this.state.bitmojisVisible;
+                console.log("Bitmojis visible:", this.state.bitmojisVisible);
+                this.displayFlags();
+                this.updateFlagList();
+            }
+
             toggleRayonType(type) {
                 this.state.visibleRayonTypes[type] = !this.state.visibleRayonTypes[type];
                 this.displayFlags();
+            }
+
+            toggleFlagVisibility(type) {
+                if (!this.state.visibleFlagTypes) {
+                    this.state.visibleFlagTypes = {
+                        permanence_active: true,
+                        permanence_inactive: true,
+                        agence: true,
+                        commercial: true
+                    };
+                }
+                this.state.visibleFlagTypes[type] = !this.state.visibleFlagTypes[type];
+                this.displayFlags();
+                this.updateFlagList();
+            }
+
+            toggleDrapeauAndRayon(type) {
+                // Cette fonction toggle à la fois les rayons ET les drapeaux
+                if (!this.state.visibleFlagTypes) {
+                    this.state.visibleFlagTypes = {
+                        permanence_active: true,
+                        permanence_inactive: true,
+                        agence: true,
+                        commercial: true
+                    };
+                }
+                this.state.visibleRayonTypes[type] = !this.state.visibleRayonTypes[type];
+                this.state.visibleFlagTypes[type] = !this.state.visibleFlagTypes[type];
+                this.displayFlags();
+                this.updateFlagList();
             }
 
             // ============================================
@@ -1361,7 +1503,6 @@
                     return;
                 }
 
-                // Créer une notification de chargement
                 const loadingDiv = document.createElement('div');
                 loadingDiv.style.cssText = `
                     position: fixed;
@@ -1386,25 +1527,20 @@
                 document.body.appendChild(loadingDiv);
 
                 try {
-                    // Attendre un peu pour que tout soit bien rendu
                     await new Promise(resolve => setTimeout(resolve, 500));
 
-                    // Méthode 1: Utiliser leaflet-image si disponible
                     if (typeof leafletImage !== 'undefined') {
                         leafletImage(this.map, async (err, canvas) => {
                             if (err) {
                                 console.error('Erreur leaflet-image:', err);
-                                // Fallback vers html2canvas
                                 await this.exportWithHtml2Canvas();
                             } else {
-                                // Ajouter les marqueurs et cercles sur le canvas
                                 const finalCanvas = await this.addMarkersToCanvas(canvas);
                                 this.downloadCanvas(finalCanvas, 'carte-zones-permanence.png');
                             }
                             document.body.removeChild(loadingDiv);
                         });
                     } else {
-                        // Méthode 2: Utiliser html2canvas
                         await this.exportWithHtml2Canvas();
                         document.body.removeChild(loadingDiv);
                     }
@@ -1423,7 +1559,7 @@
                         useCORS: true,
                         allowTaint: true,
                         backgroundColor: '#f0f0f0',
-                        scale: 2, // Meilleure qualité
+                        scale: 2,
                         logging: false
                     });
                     
@@ -1435,24 +1571,17 @@
             }
 
             async addMarkersToCanvas(baseCanvas) {
-                // Créer un nouveau canvas pour combiner tout
                 const finalCanvas = document.createElement('canvas');
                 finalCanvas.width = baseCanvas.width;
                 finalCanvas.height = baseCanvas.height;
                 const ctx = finalCanvas.getContext('2d');
                 
-                // Dessiner la carte de base
                 ctx.drawImage(baseCanvas, 0, 0);
-                
-                // Dessiner les marqueurs et cercles
-                // Note: Cette partie est complexe car il faut convertir les coordonnées lat/lng en pixels
-                // Pour simplifier, on utilise html2canvas qui capture tout
                 
                 return finalCanvas;
             }
 
             downloadCanvas(canvas, filename) {
-                // Convertir le canvas en blob et télécharger
                 canvas.toBlob((blob) => {
                     const url = URL.createObjectURL(blob);
                     const a = document.createElement('a');
@@ -1672,8 +1801,6 @@
         // ============================================
         
         const app = new CarteZonesApp();
-        
-        // Rendre l'instance accessible globalement pour les event handlers inline
         window.app = app;
     </script>
 </body>
