@@ -907,18 +907,43 @@ deselectAllZones() {
                             merged = turf.union(merged, zone.features[i]);
                         } catch (e) { console.log(`Erreur fusion ${i}:`, e); }
                     }
-                    if (merged) {
-                        const mergedLayer = L.geoJSON(merged, {
-                            style: {
-                                fillColor: zone.color,
-                                fillOpacity: 0,
-                                color: "#000000",
-                                weight: 5,
-                                opacity: 1
-                            }
-                        });
-                        mergedLayer.bindTooltip(`<strong>${zone.name}</strong><br/>${zone.features.length} géométries`, { sticky: true });
-                        this.mergedZonesLayerGroup.addLayer(mergedLayer);
+                if (merged) {
+    // Extraire SEULEMENT le contour extérieur
+    let outerBoundary;
+    
+    if (merged.geometry.type === 'Polygon') {
+        outerBoundary = {
+            type: "Feature",
+            geometry: {
+                type: "Polygon",
+                coordinates: [merged.geometry.coordinates[0]]
+            }
+        };
+    } else if (merged.geometry.type === 'MultiPolygon') {
+        outerBoundary = {
+            type: "Feature",
+            geometry: {
+                type: "MultiPolygon",
+                coordinates: merged.geometry.coordinates.map(poly => [poly[0]])
+            }
+        };
+    }
+    
+    // Simplifier le contour
+    const simplified = turf.simplify(outerBoundary, {tolerance: 0.005, highQuality: true});
+    
+    const mergedLayer = L.geoJSON(simplified, {
+        style: {
+            fillOpacity: 0,
+            color: "#000000",
+            weight: 5,
+            opacity: 1
+        }
+    });
+    
+    mergedLayer.bindTooltip(`<strong>${zone.name}</strong>`, { sticky: true });
+    this.mergedZonesLayerGroup.addLayer(mergedLayer);
+}
                     }
                 } catch (error) { console.log(`Erreur zone ${zone.name}:`, error); }
             });
