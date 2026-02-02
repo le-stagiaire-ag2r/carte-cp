@@ -284,15 +284,17 @@
                     <h4>👁️ Paramètres d'affichage</h4>
                     
                     <!-- Section 1: Carte & Zones -->
-                    <div class="section">
-                        <div class="section-title">🗺️ Carte & Zones</div>
-                        <div class="filter-grid">
-                            <label>
-                                <input type="checkbox" id="checkZones" checked onchange="app.toggleZonesVisibility()">
-                                <span>🎨 Zones colorées</span>
-                            </label>
-                        </div>
-                    </div>
+        <div class="section-title">🗺️ Carte & Zones</div>
+<div class="filter-grid">
+    <label>
+        <input type="checkbox" id="checkZones" checked onchange="app.toggleZonesVisibility()">
+        <span>🎨 Zones colorées</span>
+    </label>
+    <label>
+        <input type="checkbox" id="checkMergedZones" onchange="app.toggleMergedZones()">
+        <span>🔗 Zones fusionnées</span>
+    </label>
+</div>
                     
                     <!-- Section 2: Drapeaux & Rayons -->
                     <div class="section">
@@ -459,16 +461,20 @@
                     },
                     flagMode: false,
                     editingFlagId: null,
-                    displayPanelOpen: false
-                };
-
+                    displayPanelOpen: false,
+                    mergedZonesActive: false
+                   };
+    
+                 mergedZonesActive: false
+             
                 this.map = null;
-                this.geoLayerGroup = null;
+                this.geoLayerGroup = null;S
                 this.geoDataCache = null;
                 this.departmentBorders = null;
                 this.isLoadingGeo = false;
                 this.flagMarkers = L.layerGroup();
                 this.flagCircles = L.layerGroup();
+                this.mergedZonesLayerGroup = null;
 
                 this.init();
             }
@@ -665,8 +671,13 @@
                     checkbox.onchange = (e) => {
                         this.state.activeZoneFilters[zoneName] = e.target.checked;
                         this.updatePostalGrid();
-                        if (this.map && this.geoDataCache) this.updateMapColors();
-                    };
+                       if (this.map && this.geoDataCache) {
+    if (this.state.mergedZonesActive) {
+        this.displayMergedZones();
+    } else {
+        this.updateMapColors();
+    }
+}
                     
                     const colorDiv = document.createElement("div");
                     colorDiv.className = "zone-color-indicator";
@@ -708,32 +719,48 @@
                 });
                 
                 this.updatePostalGrid();
-                if (this.map && this.geoDataCache) {
-                    this.updateMapColors();
-                }
+           if (this.map && this.geoDataCache) {
+    if (this.state.mergedZonesActive) {
+        this.displayMergedZones();
+    } else {
+        this.updateMapColors();
+    }
+}
                 
                 if (this.map && this.departmentBordersData) {
                     this.displayDepartmentBorders();
                 }
             }
 
-            selectAllZones() {
-                Object.keys(this.state.activeZoneFilters).forEach(zoneName => {
-                    this.state.activeZoneFilters[zoneName] = true;
-                });
-                this.updateZoneCheckboxes();
-                this.updatePostalGrid();
-                if (this.map && this.geoDataCache) this.updateMapColors();
-            }
+        selectAllZones() {
+    Object.keys(this.state.activeZoneFilters).forEach(zoneName => {
+        this.state.activeZoneFilters[zoneName] = true;
+    });
+    this.updateZoneCheckboxes();
+    this.updatePostalGrid();
+    if (this.map && this.geoDataCache) {
+        if (this.state.mergedZonesActive) {
+            this.displayMergedZones();
+        } else {
+            this.updateMapColors();
+        }
+    }
+}
 
-            deselectAllZones() {
-                Object.keys(this.state.activeZoneFilters).forEach(zoneName => {
-                    this.state.activeZoneFilters[zoneName] = false;
-                });
-                this.updateZoneCheckboxes();
-                this.updatePostalGrid();
-                if (this.map && this.geoDataCache) this.updateMapColors();
-            }
+deselectAllZones() {
+    Object.keys(this.state.activeZoneFilters).forEach(zoneName => {
+        this.state.activeZoneFilters[zoneName] = false;
+    });
+    this.updateZoneCheckboxes();
+    this.updatePostalGrid();
+    if (this.map && this.geoDataCache) {
+        if (this.state.mergedZonesActive) {
+            this.displayMergedZones();
+        } else {
+            this.updateMapColors();
+        }
+    }
+}
 
             updateZoneCheckboxes() {
                 document.querySelectorAll('.zone-checkbox-item input[type="checkbox"]').forEach(checkbox => {
@@ -818,7 +845,91 @@
                     this.updateMapColors();
                 }
             }
+      // ============================================
+        // ZONES FUSIONNÉES
+        // ============================================
+        
+        toggleMergedZones() {
+            this.state.mergedZonesActive = !this.state.mergedZonesActive;
+            
+            if (this.state.mergedZonesActive) {
+                if (this.map && this.geoLayerGroup) {
+                    this.map.removeLayer(this.geoLayerGroup);
+                }
+                this.displayMergedZones();
+            } else {
+                if (this.map && this.mergedZonesLayerGroup) {
+                    this.map.removeLayer(this.mergedZonesLayerGroup);
+                }
+                if (this.map && this.geoLayerGroup) {
+                    this.map.addLayer(this.geoLayerGroup);
+                }
+            }
+        }
 
+        displayMergedZones() {
+            if (!this.map || !this.geoDataCache) return;
+            
+            console.log("🔗 Fusion des zones en cours...");
+            this.mergedZonesLayerGroup.clearLayers();
+            
+            const zoneGroups = {};
+            
+            Object.entries(this.state.zones).forEach(([cp, zoneData]) => {
+                const dept = cp.substring(0, 2);
+                if (!this.state.activeDepartments[dept]) return;
+                if (!this.state.activeZoneFilters[zoneData.name]) return;
+                
+                const zoneKey = `${zoneData.name}|||${zoneData.color}`;
+                if (!zoneGroups[zoneKey]) {
+                    zoneGroups[zoneKey] = {
+                        name: zoneData.name,
+                        color: zoneData.color,
+                        features: []
+                    };
+                }
+                
+                const cpData = this.geoDataCache[cp];
+                if (cpData && cpData.geometries) {
+                    cpData.geometries.forEach(geom => {
+                        zoneGroups[zoneKey].features.push({
+                            type: "Feature",
+                            geometry: { type: geom.type, coordinates: geom.coords }
+                        });
+                    });
+                }
+            });
+            
+            Object.values(zoneGroups).forEach(zone => {
+                if (zone.features.length === 0) return;
+                try {
+                    let merged = zone.features[0];
+                    for (let i = 1; i < zone.features.length; i++) {
+                        try {
+                            merged = turf.union(merged, zone.features[i]);
+                        } catch (e) { console.log(`Erreur fusion ${i}:`, e); }
+                    }
+                    if (merged) {
+                        const mergedLayer = L.geoJSON(merged, {
+                            style: {
+                                fillColor: zone.color,
+                                fillOpacity: 0.6,
+                                color: zone.color,
+                                weight: 4,
+                                opacity: 1
+                            }
+                        });
+                        mergedLayer.bindTooltip(`<strong>${zone.name}</strong><br/>${zone.features.length} géométries`, { sticky: true });
+                        this.mergedZonesLayerGroup.addLayer(mergedLayer);
+                    }
+                } catch (error) { console.log(`Erreur zone ${zone.name}:`, error); }
+            });
+            
+            if (!this.map.hasLayer(this.mergedZonesLayerGroup)) {
+                this.map.addLayer(this.mergedZonesLayerGroup);
+            }
+            console.log(`✅ ${Object.keys(zoneGroups).length} zones fusionnées`);
+        }
             // ============================================
             // BASCULEMENT VUE CARTE/LISTE
             // ============================================
@@ -859,6 +970,7 @@
                 }).addTo(this.map);
                 
                 this.geoLayerGroup = L.layerGroup().addTo(this.map);
+                this.mergedZonesLayerGroup = L.layerGroup();
                 this.flagCircles.addTo(this.map);
                 this.flagMarkers.addTo(this.map);
                 
@@ -1429,17 +1541,27 @@
                 container.appendChild(fragment);
             }
 
-            toggleZonesVisibility() {
-                this.state.zonesVisible = !this.state.zonesVisible;
-                
-                if (this.map && this.geoLayerGroup) {
-                    if (this.state.zonesVisible) {
-                        this.map.addLayer(this.geoLayerGroup);
-                    } else {
-                        this.map.removeLayer(this.geoLayerGroup);
-                    }
-                }
+           toggleZonesVisibility() {
+    this.state.zonesVisible = !this.state.zonesVisible;
+    
+    if (this.state.mergedZonesActive) {
+        if (this.map && this.mergedZonesLayerGroup) {
+            if (this.state.zonesVisible) {
+                this.map.addLayer(this.mergedZonesLayerGroup);
+            } else {
+                this.map.removeLayer(this.mergedZonesLayerGroup);
             }
+        }
+    } else {
+        if (this.map && this.geoLayerGroup) {
+            if (this.state.zonesVisible) {
+                this.map.addLayer(this.geoLayerGroup);
+            } else {
+                this.map.removeLayer(this.geoLayerGroup);
+            }
+        }
+    }
+}
 
             toggleRayonsVisibility() {
                 this.state.rayonsVisible = !this.state.rayonsVisible;
