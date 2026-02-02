@@ -669,13 +669,14 @@
                     checkbox.checked = this.state.activeZoneFilters[zoneName];
                     checkbox.dataset.zoneName = zoneName;
                     checkbox.onchange = (e) => {
-                        this.state.activeZoneFilters[zoneName] = e.target.checked;
-                        this.updatePostalGrid();
-                       if (this.map && this.geoDataCache) {
-    if (this.state.mergedZonesActive) {
-        this.displayMergedZones();
-    } else {
-        this.updateMapColors();
+    this.state.activeZoneFilters[zoneName] = e.target.checked;
+    this.updatePostalGrid();
+    if (this.map && this.geoDataCache) {
+        if (this.state.mergedZonesActive) {
+            this.displayMergedZones();
+        } else {
+            this.updateMapColors();
+        }
     }
 };
                     
